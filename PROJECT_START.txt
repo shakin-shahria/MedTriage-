@@ -1,0 +1,130 @@
+MedTriage — Quick Start Notes
+
+Repo root: /Users/shakin/Developer/medtriage
+
+1) Purpose
+- FastAPI symptom triage demo (rule-based /triage, optional ML /triage_ml)
+- Persists sessions + audit_log to DB (SQLite by default, MySQL when configured)
+
+2) Environment (macOS, zsh)
+- Use the project's venv: ./venv
+- Python: use venv's python and pip
+
+3) Install deps (if you add/remove packages)
+/Users/shakin/Developer/medtriage/venv/bin/pip3 install -r requirements.txt
+
+4) Database
+- Default (dev): SQLite file at ./medtriage_dev.db
+- MySQL (production/dev using MySQL): set env var MEDTRIAGE_DATABASE_URL
+  Example MySQL URL (PyMySQL driver):
+  export MEDTRIAGE_DATABASE_URL='mysql+pymysql://medtriage_db:1234@127.0.0.1:3306/medtriage_db'
+- SQL schema files:
+  - schema.sql -> full `sessions` + `audit_log` DDL
+  - simple_schema.sql -> minimal quick-test table
+
+5) Run server (dev)
+- SQLite (default):
+  /Users/shakin/Developer/medtriage/venv/bin/uvicorn main:app --reload
+- MySQL (explicit):
+  export MEDTRIAGE_DATABASE_URL='mysql+pymysql://medtriage_db:1234@127.0.0.1:3306/medtriage_db'
+  /Users/shakin/Developer/medtriage/venv/bin/uvicorn main:app --reload
+
+6) Endpoints
+- GET /browser_post.html -> small HTML form to POST to /triage
+- POST /triage -> rule-based triage
+- POST /triage_ml -> optional ML triage (may download models if MEDTRIAGE_PRELOAD_ML=1 at startup)
+
+7) DB behavior
+- Each POST to /triage or /triage_ml will (when MEDTRIAGE_DATABASE_URL is set) insert a row into `sessions` and one into `audit_log`.
+- The app defaults to SQLite if MEDTRIAGE_DATABASE_URL is not provided.
+
+8) Quick verification (after starting server with MySQL)
+- Submit POST (curl or browser) and check MySQL:
+  mysql -h127.0.0.1 -P3306 -u medtriage_db -p'1234' -e "USE medtriage_db; SELECT * FROM sessions ORDER BY created_at DESC LIMIT 5; SELECT * FROM audit_log ORDER BY timestamp DESC LIMIT 5;"
+
+9) Useful scripts
+- scripts/test_insert.py -> posts a test triage (uses MEDTRIAGE_DATABASE_URL set in the script) and prints recent DB rows
+- scripts/direct_insert.py -> tries a direct insert via crud.create_session_with_audit
+
+10) Notes & next steps
+- Logs: watch terminal running uvicorn for request logs
+- PII: the app uses a basic regex anonymizer; replace with vetted de-id pipeline before storing PHI
+- Optional: add /admin/sessions (guarded) to view recent sessions easily
+
+11) Contact points in repo
+- main.py -> FastAPI app and endpoints
+- triage.py -> rule-based classifier
+- ml_triage.py -> ML wrapper (optional)
+- db.py -> SQLAlchemy engine & SessionLocal
+- models.py -> ORM models (Session, AuditLog)
+- crud.py -> create_session_with_audit
+- schema.sql, simple_schema.sql -> DDL
+
+That's it — resume here tomorrow by ensuring the venv is active, setting MEDTRIAGE_DATABASE_URL if you want MySQL, and starting uvicorn.
+
+
+url:http://127.0.0.1:8000/browser_post.html
+
+
+Day 2 - Run & Verification (added)
+
+Status now
+- Backend: FastAPI app is runnable from the project venv. Uvicorn is installed in `./venv`.
+- Frontend: React + Vite in `./frontend` (dev server via `npm run dev`). A static quick-demo page is available at `/browser_post.html`.
+
+How to run everything (exact commands)
+
+1) Activate/use the project's venv (optional but recommended):
+   # macOS / zsh - use the venv python directly or activate it
+   source ./venv/bin/activate
+   # or run commands via the venv python directly:
+   ./venv/bin/uvicorn main:app --reload
+
+2) Start the backend (FastAPI)
+   # Start with ML preload disabled (fast startup):
+   MEDTRIAGE_PRELOAD_ML=0 ./venv/bin/uvicorn main:app --reload --host 127.0.0.1 --port 8000
+
+   # If you want the ML model preloaded (may take long & download model):
+   MEDTRIAGE_PRELOAD_ML=1 ./venv/bin/uvicorn main:app --reload --host 127.0.0.1 --port 8000
+
+3) Start the frontend (in a separate terminal)
+   cd frontend
+   npm install      # first time only
+   npm run dev
+
+Dev server notes: Vite commonly serves at http://localhost:5173/ and will fall back to 5174 if 5173 is busy. Check the terminal where `npm run dev` runs for the exact Local URL.
+
+Useful URLs (when servers are running)
+- Backend OpenAPI (Swagger UI): http://127.0.0.1:8000/docs
+- Backend ReDoc: http://127.0.0.1:8000/redoc
+- Simple demo HTML (no build): http://127.0.0.1:8000/browser_post.html
+- Rule-based triage POST: http://127.0.0.1:8000/triage
+- Optional ML triage POST: http://127.0.0.1:8000/triage_ml
+- Frontend React app (Vite): http://localhost:5173/  (or http://localhost:5174/)
+
+Admin /auth notes
+- Admin endpoints (e.g., GET /admin/sessions) require admin auth.
+- By default local dev accepts an X-Admin-Token header or Authorization: Bearer <token>. Set `MEDTRIAGE_ADMIN_TOKEN` in the environment where uvicorn runs to require that token.
+- Optionally set `MEDTRIAGE_ADMIN_JWT_SECRET` and use a signed HS256 JWT with claim `{"role":"admin"}`.
+- For quick local testing you can use the provided helper script (if present) or create a simple HS256 token using Python/pyjwt.
+
+Quick smoke test (from another terminal)
+- Test rule-based triage (curl):
+  curl -s -X POST http://127.0.0.1:8000/triage -H "Content-Type: application/json" -d '{"symptom":"chest pain"}' | jq
+
+- Test admin endpoint (replace TOKEN with your admin token):
+  curl -s -H "X-Admin-Token: TOKEN" http://127.0.0.1:8000/admin/sessions | jq
+
+Troubleshooting
+- Port already in use on 8000: find the pid with `lsof -i :8000` and kill it (or choose another port and pass `--port`).
+- Vite picks a fallback port if 5173 is busy; check the frontend terminal for the exact URL.
+- If dependencies are missing, (re)install in the venv:
+  ./venv/bin/python -m pip install -r requirements.txt
+  cd frontend && npm install
+- If FastAPI import-time errors appear, check the uvicorn terminal logs for stack traces and fix missing env vars (e.g., DB URL) or missing packages.
+
+Next actions you may want to run now
+- Start backend: MEDTRIAGE_PRELOAD_ML=0 ./venv/bin/uvicorn main:app --reload
+- Start frontend: cd frontend && npm run dev
+
+Enjoy — open the frontend URL and the backend Swagger UI to explore endpoints.

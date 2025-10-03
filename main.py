@@ -1,0 +1,349 @@
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, JSONResponse
+from pathlib import Path
+from pydantic import BaseModel
+from typing import Optional
+
+from triage import classify_symptom
+from ml_triage import ml_triage, try_ml_triage, _ml
+import os
+import logging
+import time
+import jwt
+from datetime import datetime, timedelta
+from fastapi import Depends
+from fastapi import Header, HTTPException, Request
+from sqlalchemy.orm import Session
+from typing import Optional
+import json
+import base64
+import secrets
+try:
+    from db import get_db
+    import crud
+    DB_ENABLED = True
+except Exception:
+    # DB dependencies may be missing in lightweight test environments
+    get_db = None
+    crud = None
+    DB_ENABLED = False
+
+logger = logging.getLogger(__name__)
+
+
+
+# Simple in-memory rate limiter state (per-IP). This is intentionally a small
+# demonstration implementation. For production use a distributed rate limiter
+# (Redis, Memcached) and enforce stronger policies.
+_RATE_LIMIT_STATE: dict = {}
+
+def _get_rate_limit_config():
+    try:
+        max_requests = int(os.environ.get("MEDTRIAGE_RATE_LIMIT_MAX", "60"))
+    except Exception:
+        max_requests = 60
+    try:
+        window = int(os.environ.get("MEDTRIAGE_RATE_LIMIT_WINDOW", "60"))
+    except Exception:
+        window = 60
+    return max_requests, window
+
+
+# Create the FastAPI app early so decorators (middleware/event handlers)
+# can reference it. Previously `app` was declared after the middleware which
+# caused a NameError at startup.
+app = FastAPI(title="MedTriage - Symptom Checker (MVP)")
+
+
+@app.middleware("http")
+async def simple_rate_limiter(request, call_next):
+    # Apply only to triage POST endpoints to avoid over-limiting other routes
+    if request.method == "POST" and request.url.path in ("/triage", "/triage_ml"):
+        client_ip = request.client.host if request.client else "unknown"
+        now = time.time()
+        max_requests, window = _get_rate_limit_config()
+
+        entry = _RATE_LIMIT_STATE.get(client_ip)
+        if entry is None:
+            entry = []
+            _RATE_LIMIT_STATE[client_ip] = entry
+
+        # remove timestamps outside the window
+        cutoff = now - window
+        while entry and entry[0] < cutoff:
+            entry.pop(0)
+
+        if len(entry) >= max_requests:
+            # Rate limited
+            return JSONResponse({"detail": "Too many requests"}, status_code=429)
+
+        # record request
+        entry.append(now)
+
+    response = await call_next(request)
+    return response
+
+
+@app.on_event("startup")
+def maybe_preload_ml():
+    """Preload ML model at startup if MEDTRIAGE_PRELOAD_ML=1 is set.
+
+    This keeps model downloads out of request paths and makes `/triage_ml`
+    respond with ML predictions (once the model is loaded). Only enable
+    this when you want the app to download models during process startup.
+    """
+    preload = os.environ.get("MEDTRIAGE_PRELOAD_ML", "0")
+    if preload == "1":
+        try:
+            # Call the classifier init to download/load the model once at startup
+            _ml._init()
+            logger.info("ML model preloaded at startup")
+        except Exception:
+            logger.exception("Failed to preload ML model at startup; continuing with rule-based fallback")
+
+# Development CORS - allow all origins so the simple local HTML client can POST
+# Configure CORS origins via env var (comma-separated). Default to '*' for
+# local development convenience.
+cors_origins = os.environ.get("MEDTRIAGE_CORS_ORIGINS", "*")
+if cors_origins.strip() == "*":
+    allow_list = ["*"]
+else:
+    allow_list = [o.strip() for o in cors_origins.split(",") if o.strip()]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allow_list,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.get("/browser_post.html", include_in_schema=False)
+def serve_browser_post():
+    html_path = Path(__file__).resolve().parent / "browser_post.html"
+    return FileResponse(html_path)
+
+
+class TriageRequest(BaseModel):
+    symptom: str
+
+
+class TriageResponse(BaseModel):
+    risk: str
+    suggestion: str
+    conditions: list[str]
+    score: Optional[float] = None
+    matches: Optional[list[str]] = None
+
+
+@app.post("/triage", response_model=TriageResponse)
+def triage(req: TriageRequest):
+    # Basic input validation: prevent extremely long inputs
+    if req.symptom and len(req.symptom) > 2000:
+        return JSONResponse({"detail": "symptom text too long"}, status_code=413)
+
+    risk, suggestion, conditions, score, matches = classify_symptom(req.symptom)
+    # store session (anonymous user)
+    try:
+        if DB_ENABLED:
+            # create a generator and get the session, ensure we close the generator so
+            # the `finally` in `get_db` runs and the session is closed.
+            _gen = get_db()
+            db = next(_gen)
+            try:
+                crud.create_session_with_audit(db, input_text=req.symptom, risk_level=risk, predicted_conditions=conditions, next_step=suggestion, confidence_score=score, endpoint="/triage", fallback_to_rule=False)
+            finally:
+                try:
+                    _gen.close()
+                except Exception:
+                    pass
+    except Exception:
+        logger.exception("Failed to record session")
+
+    return TriageResponse(risk=risk, suggestion=suggestion, conditions=conditions, score=score, matches=matches)
+
+
+@app.post("/triage_ml", response_model=TriageResponse)
+def triage_ml(req: TriageRequest):
+    """Optional ML-powered triage endpoint.
+
+    This will attempt to use a transformers zero-shot model. If the model is
+    unavailable or fails, it falls back to the rule-based `classify_symptom`.
+    """
+    fallback = False
+    # Basic input validation: prevent extremely long inputs
+    if req.symptom and len(req.symptom) > 2000:
+        return JSONResponse({"detail": "symptom text too long"}, status_code=413)
+
+    try:
+        # Attempt ML with a short timeout to avoid blocking the UI while a model downloads
+        risk, suggestion, conditions, score, matches = try_ml_triage(req.symptom, timeout=2.0)
+    except Exception:
+        # Fallback to rule-based
+        fallback = True
+        risk, suggestion, conditions, score, matches = classify_symptom(req.symptom)
+
+    # Audit log with fallback info
+    try:
+        if DB_ENABLED:
+            _gen = get_db()
+            db = next(_gen)
+            try:
+                crud.create_session_with_audit(db, input_text=req.symptom, risk_level=risk, predicted_conditions=conditions, next_step=suggestion, confidence_score=score, endpoint="/triage_ml", fallback_to_rule=fallback)
+            finally:
+                try:
+                    _gen.close()
+                except Exception:
+                    pass
+    except Exception:
+        logger.exception("Failed to record ML session")
+
+    return TriageResponse(risk=risk, suggestion=suggestion, conditions=conditions, score=score, matches=matches)
+
+
+@app.get("/admin/sessions")
+def admin_sessions(limit: int = 20, page: Optional[int] = None, page_size: int = 20, risk: Optional[str] = None, x_admin_token: Optional[str] = Header(None), request: Request = None):
+    """Return recent sessions with audit logs. Guarded by X-Admin-Token header.
+
+    Set MEDTRIAGE_ADMIN_TOKEN env var to a secret value. If not set, defaults to
+    'devtoken' to make local development easy.
+    """
+    # Prefer Authorization: Bearer <token> or X-Admin-Token header. If
+    # MEDTRIAGE_ADMIN_TOKEN is set, require a Bearer token or X-Admin-Token that
+    # matches it. If MEDTRIAGE_ADMIN_TOKEN is not set, fall back to Basic Auth
+    # using MEDTRIAGE_ADMIN_USER / MEDTRIAGE_ADMIN_PASSWORD (keeps local dev easy).
+    authorised = False
+    expected_token = os.environ.get("MEDTRIAGE_ADMIN_TOKEN")
+
+    # Check X-Admin-Token first (legacy) or Authorization: Bearer <token>
+    token_candidate = None
+    if x_admin_token:
+        token_candidate = x_admin_token
+    else:
+        auth_hdr = None
+        if request is not None:
+            auth_hdr = request.headers.get("authorization")
+        if auth_hdr:
+            try:
+                scheme, cred = auth_hdr.split(" ", 1)
+                if scheme.lower() == "bearer":
+                    token_candidate = cred
+            except Exception:
+                token_candidate = None
+
+    if expected_token:
+        # Strict token check when env var is provided
+        if token_candidate and secrets.compare_digest(token_candidate, expected_token):
+            authorised = True
+        else:
+            # If a JWT secret is configured, allow a signed Bearer JWT as admin
+            jwt_secret = os.environ.get("MEDTRIAGE_ADMIN_JWT_SECRET")
+            if jwt_secret and token_candidate:
+                try:
+                    payload = jwt.decode(token_candidate, jwt_secret, algorithms=["HS256"])
+                    if payload.get("role") == "admin":
+                        authorised = True
+                except Exception:
+                    authorised = authorised or False
+    else:
+        # No admin token configured: allow Basic auth fallback for local dev
+        basic_user = os.environ.get("MEDTRIAGE_ADMIN_USER")
+        basic_pw = os.environ.get("MEDTRIAGE_ADMIN_PASSWORD")
+        if basic_user and basic_pw and token_candidate is None:
+            # Try Basic auth header explicitly
+            auth_hdr = None
+            if request is not None:
+                auth_hdr = request.headers.get("authorization")
+            if auth_hdr:
+                try:
+                    scheme, token = auth_hdr.split(" ", 1)
+                    if scheme.lower() == "basic":
+                        decoded = base64.b64decode(token).decode("utf-8")
+                        username, password = decoded.split(":", 1)
+                        user_ok = secrets.compare_digest(username, basic_user)
+                        pw_ok = secrets.compare_digest(password, basic_pw)
+                        authorised = user_ok and pw_ok
+                except Exception:
+                    authorised = False
+    
+
+    if not authorised:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    if not DB_ENABLED:
+        raise HTTPException(status_code=503, detail="Database not enabled in this environment")
+
+    # fetch sessions and their audits
+    db_gen = get_db()
+    db: Session = next(db_gen)
+    try:
+        # Import models locally to avoid startup import cycles
+        from models import Session as SessionModel, AuditLog as AuditLogModel, RiskLevelEnum
+
+        # Base query
+        q = db.query(SessionModel)
+        # optional risk filter
+        if risk:
+            try:
+                # normalize and try enum match
+                rnorm = str(risk).lower()
+                risk_enum = RiskLevelEnum(rnorm)
+                q = q.filter(SessionModel.risk_level == risk_enum)
+            except Exception:
+                # fallback: compare enum name/text
+                q = q.filter(SessionModel.risk_level == risk)
+
+        q = q.order_by(SessionModel.created_at.desc())
+
+        # Pagination mode when page is provided
+        if page is not None:
+            # ensure sane page/page_size
+            page = max(1, int(page))
+            page_size = max(1, min(200, int(page_size)))
+            total = q.count()
+            items = q.offset((page - 1) * page_size).limit(page_size).all()
+            out_items = []
+            for s in items:
+                audits = db.query(AuditLogModel).filter(AuditLogModel.session_id == s.session_id).order_by(AuditLogModel.timestamp.desc()).all()
+                out_items.append({
+                    "session_id": s.session_id,
+                    "input_text": s.input_text,
+                    "risk_level": getattr(s.risk_level, 'name', str(s.risk_level)),
+                    "predicted_conditions": s.predicted_conditions,
+                    "next_step": s.next_step,
+                    "confidence_score": s.confidence_score,
+                    "created_at": s.created_at.isoformat() if s.created_at is not None else None,
+                    "audits": [
+                        {"log_id": a.log_id, "endpoint": a.endpoint, "fallback_to_rule": bool(a.fallback_to_rule), "timestamp": a.timestamp.isoformat() if a.timestamp is not None else None}
+                        for a in audits
+                    ]
+                })
+            return {"total": total, "page": page, "page_size": page_size, "items": out_items}
+
+        # Legacy behaviour: limit-based list
+        sessions = q.limit(limit).all()
+        out = []
+        for s in sessions:
+            # find audits for this session
+            audits = db.query(AuditLogModel).filter(AuditLogModel.session_id == s.session_id).order_by(AuditLogModel.timestamp.desc()).all()
+            out.append({
+                "session_id": s.session_id,
+                "input_text": s.input_text,
+                "risk_level": getattr(s.risk_level, 'name', str(s.risk_level)),
+                "predicted_conditions": s.predicted_conditions,
+                "next_step": s.next_step,
+                "confidence_score": s.confidence_score,
+                "created_at": s.created_at.isoformat() if s.created_at is not None else None,
+                "audits": [
+                    {"log_id": a.log_id, "endpoint": a.endpoint, "fallback_to_rule": bool(a.fallback_to_rule), "timestamp": a.timestamp.isoformat() if a.timestamp is not None else None}
+                    for a in audits
+                ]
+            })
+        return out
+    finally:
+        try:
+            db_gen.close()
+        except Exception:
+            pass

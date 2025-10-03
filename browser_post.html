@@ -1,0 +1,137 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>MedTriage — Demo UI</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <style>
+      :root{--bg:#f7f9fb;--card:#fff;--muted:#6b7280;--accent:#0ea5a4}
+      body{font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial;margin:0;background:var(--bg);color:#0f172a}
+      .wrap{max-width:900px;margin:28px auto;padding:20px}
+      header{display:flex;align-items:center;gap:16px}
+      h1{margin:0;font-size:1.25rem}
+      .card{background:var(--card);padding:16px;border-radius:10px;box-shadow:0 6px 18px rgba(12,18,28,.06);margin-top:14px}
+      label{font-weight:600;font-size:.9rem}
+      textarea{width:100%;min-height:120px;padding:12px;border-radius:8px;border:1px solid #e6eef3;resize:vertical}
+      .controls{display:flex;gap:8px;margin-top:10px;align-items:center}
+      button{background:var(--accent);color:#fff;border:0;padding:8px 12px;border-radius:8px;cursor:pointer}
+      .btn-ghost{background:transparent;color:var(--accent);border:1px solid #dbeef0}
+      .row{display:flex;gap:12px}
+      .col{flex:1}
+      pre{background:#0f172a;color:#e6eef3;padding:12px;border-radius:8px;overflow:auto}
+      .meta{font-size:.85rem;color:var(--muted)}
+      select{padding:8px;border-radius:8px}
+      .history{max-height:160px;overflow:auto;border:1px dashed #e6eef3;padding:8px;border-radius:8px}
+      .history button{display:block;width:100%;text-align:left;background:transparent;border:0;padding:8px;border-radius:6px}
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <h1>MedTriage — Demo UI</h1>
+        <div class="meta">Enter symptoms and test the triage API</div>
+      </header>
+
+      <div class="card">
+        <div class="row">
+          <div class="col">
+            <label for="endpoint">Endpoint</label>
+            <div style="display:flex;gap:8px;margin-top:6px;align-items:center">
+              <select id="endpoint">
+                <option value="/triage">/triage (rule-based)</option>
+                <option value="/triage_ml">/triage_ml (ML optional)</option>
+              </select>
+              <div style="margin-left:auto" class="meta">Server: <strong>http://127.0.0.1:8000</strong></div>
+            </div>
+
+            <div style="margin-top:12px">
+              <label for="symptom">Symptoms</label>
+              <textarea id="symptom">Severe chest pain, shortness of breath</textarea>
+            </div>
+
+            <div class="controls">
+              <button id="send">Send</button>
+              <button id="copy" class="btn-ghost">Copy response</button>
+              <button id="clear" class="btn-ghost">Clear</button>
+              <div style="margin-left:auto" class="meta" id="status">Idle</div>
+            </div>
+          </div>
+
+          <div style="width:320px">
+            <label>Recent requests</label>
+            <div class="history" id="history">(none yet)</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:12px">
+        <label>Response</label>
+        <pre id="response">(no response yet)</pre>
+      </div>
+    </div>
+
+    <script>
+      const base = 'http://127.0.0.1:8000'
+      const send = document.getElementById('send')
+      const resp = document.getElementById('response')
+      const status = document.getElementById('status')
+      const hist = document.getElementById('history')
+      const copyBtn = document.getElementById('copy')
+      const clearBtn = document.getElementById('clear')
+
+      let history = []
+
+      function addHistory(input, endpoint){
+        history.unshift({input, endpoint, at: new Date().toLocaleString()})
+        renderHistory()
+      }
+
+      function renderHistory(){
+        hist.innerHTML = ''
+        if(history.length===0){ hist.textContent='(none yet)'; return }
+        history.slice(0,12).forEach((h,i)=>{
+          const b = document.createElement('button')
+          b.textContent = `${h.at} ${h.endpoint} — ${h.input.slice(0,60)}`
+          b.onclick = ()=>{
+            document.getElementById('symptom').value = h.input
+            document.getElementById('endpoint').value = h.endpoint
+          }
+          hist.appendChild(b)
+        })
+      }
+
+      send.addEventListener('click', async ()=>{
+        const endpoint = document.getElementById('endpoint').value
+        const text = document.getElementById('symptom').value.trim()
+        if(!text){ resp.textContent='Please enter symptoms.'; return }
+        status.textContent = 'Sending...'
+        resp.textContent = ''
+        try{
+          const r = await fetch(base + endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ symptom: text }),
+          })
+          const body = await r.json()
+          resp.textContent = JSON.stringify(body, null, 2)
+          status.textContent = `HTTP ${r.status}`
+          addHistory(text, endpoint)
+        }catch(err){
+          resp.textContent = 'Error: ' + err.message
+          status.textContent = 'Error'
+        }
+      })
+
+      copyBtn.addEventListener('click', ()=>{
+        const txt = resp.textContent
+        if(!txt) return
+        navigator.clipboard?.writeText(txt).then(()=>{
+          copyBtn.textContent = 'Copied'
+          setTimeout(()=>copyBtn.textContent='Copy response',1200)
+        })
+      })
+
+      clearBtn.addEventListener('click', ()=>{ document.getElementById('symptom').value=''; resp.textContent=''; status.textContent='Idle' })
+    </script>
+  </body>
+</html>
