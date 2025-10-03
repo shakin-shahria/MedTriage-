@@ -128,3 +128,5 @@ Next actions you may want to run now
 - Start frontend: cd frontend && npm run dev
 
 Enjoy — open the frontend URL and the backend Swagger UI to explore endpoints.
+
+Next: implement admin UI; integrate ML triage; add CI & tests.

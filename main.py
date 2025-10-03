@@ -4,7 +4,6 @@ from fastapi.responses import FileResponse, JSONResponse
 from pathlib import Path
 from pydantic import BaseModel
 from typing import Optional
-
 from triage import classify_symptom
 from ml_triage import ml_triage, try_ml_triage, _ml
 import os
