@@ -1,3 +1,69 @@
+
+
+How to run the project:
+
+
+
+MedTriage Server Startup Guide
+This guide shows how to start the MedTriage project's backend (FastAPI) and frontend (React + Vite) servers locally.
+
+Prerequisites
+Ensure the project's virtual environment (venv) is set up and activated if needed.
+Install backend dependencies: ./venv/bin/pip install -r requirements.txt
+Install frontend dependencies: cd frontend && npm install
+Step 1: Start the Backend Server
+Run this command in a terminal from the project root (medtriage):
+
+
+MEDTRIAGE_PRELOAD_ML=0 ./venv/bin/uvicorn main:app --reload --host 127.0.0.1 --port 8000
+
+
+
+This starts FastAPI with auto-reload enabled.
+MEDTRIAGE_PRELOAD_ML=0 skips ML model loading for faster startup.
+Server runs on http://127.0.0.1:8000
+Step 2: Start the Frontend Server
+In a separate terminal, run:
+
+cd frontend && npm run dev
+
+
+This starts the Vite dev server.
+Server typically runs on http://localhost:5173/ (or http://localhost:5174/ if 5173 is busy).
+Useful Links (Once Running)
+Backend API Docs: http://127.0.0.1:8000/docs
+Demo Page: http://127.0.0.1:8000/browser_post.html
+Frontend App: http://localhost:5173/
+Notes
+Both servers run in the background with auto-reload.
+To stop, press Ctrl+C in each terminal.
+If ports are in use, check with lsof -i :8000 or lsof -i :5173 and kill processes if needed.
+
+
+
+Project Purpose
+MedTriage is an AI-powered symptom checker MVP built with FastAPI. It triages medical symptoms using rule-based logic (and optional ML) to assess risk levels and suggest actions like "Visit ER immediately" for high-risk symptoms.
+
+Why the Pages?
+Backend (/docs and /browser_post.html):
+
+/docs: Interactive API documentation for developers to test endpoints.
+browser_post.html: Simple demo form to manually test the /triage endpoint without a full UI.
+Frontend (React app at /):
+
+Main user interface where patients can input symptoms and get triage results in a web app.
+These pages enable testing, documentation, and user interaction for the triage system. The backend handles API logic, while the frontend provides a polished experience.
+
+
+
+
+
+
+
+
+
+
+
 MedTriage — Quick Start Notes
 
 Repo root: /Users/shakin/Developer/medtriage
@@ -126,6 +192,102 @@ Troubleshooting
 Next actions you may want to run now
 - Start backend: MEDTRIAGE_PRELOAD_ML=0 ./venv/bin/uvicorn main:app --reload
 - Start frontend: cd frontend && npm run dev
+
+
+
+
+proper user manual:
+
+Read [](file:///Users/shakin/Developer/medtriage/PROJECT_START.txt#1-1), lines 1 to 51
+
+# MedTriage User Manual: How to Run the Project
+
+## Overview
+MedTriage is a symptom triage app with a FastAPI backend and React frontend. It uses rule-based logic by default, with an optional ML model (now DistilBERT-based zero-shot classification) for enhanced triage.
+
+## Prerequisites
+- Python 3.9+ with virtual environment
+- Node.js and npm
+- macOS (as per your setup)
+
+## Quick Start Steps
+
+### 1. Activate Virtual Environment
+```bash
+cd /Users/shakin/Developer/medtriage
+source venv/bin/activate
+```
+
+### 2. Install Dependencies (if needed)
+```bash
+# Backend
+pip install -r requirements.txt
+
+# Frontend
+cd frontend && npm install && cd ..
+```
+
+### 3. Start Backend Server
+In one terminal:
+```bash
+MEDTRIAGE_PRELOAD_ML=0 ./venv/bin/uvicorn main:app --reload --host 127.0.0.1 --port 8000
+```
+- `MEDTRIAGE_PRELOAD_ML=0` for fast startup (ML loads on first use)
+- `MEDTRIAGE_PRELOAD_ML=1` to preload ML model at startup (slower, downloads ~268MB model)
+
+### 4. Start Frontend Server
+In another terminal:
+```bash
+cd frontend && npm run dev
+```
+
+## Access Points
+- **Frontend App**: http://localhost:5173/ (or 5174 if busy)
+- **Backend API Docs**: http://127.0.0.1:8000/docs
+- **Demo Page**: http://127.0.0.1:8000/browser_post.html
+- **Rule-based Triage**: POST to http://127.0.0.1:8000/triage
+- **ML Triage**: POST to http://127.0.0.1:8000/triage_ml (uses DistilBERT model)
+
+## ML Model Details
+- **Model**: `typeform/distilbert-base-uncased-mnli` (small DistilBERT for zero-shot classification)
+- **Function**: Classifies symptoms into risk levels (high/medium/low) and maps to actions
+- **Fallback**: If ML fails or confidence < 0.4, falls back to rule-based system
+- **Download**: ~268MB on first use (internet required)
+
+## Testing
+```bash
+# Test rule-based
+curl -X POST http://127.0.0.1:8000/triage -H "Content-Type: application/json" -d '{"symptom":"chest pain"}'
+
+# Test ML
+curl -X POST http://127.0.0.1:8000/triage_ml -H "Content-Type: application/json" -d '{"symptom":"chest pain"}'
+```
+
+## Stopping Servers
+- Press `Ctrl+C` in each terminal
+
+## Troubleshooting
+- **Port conflicts**: Check with `lsof -i :8000` or `lsof -i :5173`
+- **ML issues**: Ensure internet for model download
+- **Dependencies**: Reinstall if import errors
+
+## Database (Optional)
+- Defaults to SQLite (medtriage_dev.db)
+- For MySQL: Set `MEDTRIAGE_DATABASE_URL` env var
+
+That's it! Next time, just follow steps 1, 3, and 4. The ML model will work automatically.
+
+
+
+
+
+
+
+
+
+
+
+
 
 Enjoy — open the frontend URL and the backend Swagger UI to explore endpoints.
 

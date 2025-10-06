@@ -25,20 +25,20 @@ class MLClassifier:
         # pre-download the model. Calling it lazily during a request may
         # block (downloads) which we avoid in try_ml_triage.
         if self._classifier is None:
-            # Use a zero-shot-classification pipeline to map symptoms to risk labels
+            # Use a zero-shot-classification pipeline with a small DistilBERT model fine-tuned for NLI
             # This will download a model on first run (internet required)
-            self._classifier = pipeline("zero-shot-classification")
+            self._classifier = pipeline("zero-shot-classification", model="typeform/distilbert-base-uncased-mnli")
             self._initialized = True
 
     def classify(self, text: str) -> List[tuple]:
         """Return list of (label, score) predictions.
 
-        Example labels: ['High', 'Medium', 'Low']
+        Example labels: ['High risk: Visit ER immediately', 'Medium risk: Telehealth', 'Low risk: Self-care']
         """
         if not self._initialized:
             raise RuntimeError("ML pipeline not initialized")
 
-        labels = ["High", "Medium", "Low"]
+        labels = ["high risk", "medium risk", "low risk"]
         out = self._classifier(text, labels)
         # Return labels with scores in order
         return list(zip(out["labels"], out["scores"]))
@@ -58,15 +58,31 @@ def ml_triage(text: str):
         raise RuntimeError("no predictions from ML model")
 
     label, score = preds[0]
+    # Parse the label to get risk and suggestion
+    label_lower = label.lower()
+    if "high" in label_lower:
+        risk = "High"
+        suggestion = "Visit ER immediately"
+        conditions = ["Possibly severe condition"]
+    elif "medium" in label_lower:
+        risk = "Medium"
+        suggestion = "Telehealth"
+        conditions = ["Monitor symptoms"]
+    elif "low" in label_lower:
+        risk = "Low"
+        suggestion = "Self-care"
+        conditions = ["Mild condition"]
+    else:
+        # Fallback
+        risk = "Medium"
+        suggestion = "Telehealth"
+        conditions = ["Undetermined"]
+    
     # Return also the confidence score for thresholding in the caller
-    if label == "High":
-        return ("High", "Visit ER immediately", ["Possibly severe condition"], float(score), [])
-    if label == "Low":
-        return ("Low", "Self-care", ["Mild condition"], float(score), [])
-    return ("Medium", "Telehealth", ["Monitor symptoms"], float(score), [])
+    return (risk, suggestion, conditions, float(score), [])
 
 
-def try_ml_triage(text: str, timeout: float = 2.0, min_confidence: float = 0.6):
+def try_ml_triage(text: str, timeout: float = 2.0, min_confidence: float = 0.4):
     """Try to run ml_triage but give up after `timeout` seconds.
 
     Returns (risk, suggestion, conditions) on success or raises RuntimeError on failure/timeout.
@@ -107,7 +123,7 @@ def try_ml_triage(text: str, timeout: float = 2.0, min_confidence: float = 0.6):
         raise RuntimeError("unexpected ML result format")
 
     # If the top prediction is below the confidence threshold, treat as failure
-    if score < float(min_confidence):
-        raise RuntimeError(f"ML confidence {score:.2f} below threshold {min_confidence}")
+    if score < float(0.4):
+        raise RuntimeError(f"ML confidence {score:.2f} below threshold 0.4")
 
     return risk, suggestion, conditions, score, matches
