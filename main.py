@@ -31,7 +31,6 @@ except Exception:
 logger = logging.getLogger(__name__)
 
 
-
 # Simple in-memory rate limiter state (per-IP). This is intentionally a small
 # demonstration implementation. For production use a distributed rate limiter
 # (Redis, Memcached) and enforce stronger policies.
