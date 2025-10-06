@@ -289,6 +289,5 @@ That's it! Next time, just follow steps 1, 3, and 4. The ML model will work auto
 
 
 
-Enjoy — open the frontend URL and the backend Swagger UI to explore endpoints.
 
-Next: implement admin UI; integrate ML triage; add CI & tests.
+Next: Add JWT-based authentication for user sessions and admin access, securing endpoints and demonstrating security expertise. (Implement with fastapi-jwt-auth library.)
