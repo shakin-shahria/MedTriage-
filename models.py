@@ -14,10 +14,21 @@ class RiskLevelEnum(enum.Enum):
     high = "high"
 
 
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String(50), unique=True, nullable=False, index=True)
+    email = Column(String(100), unique=True, nullable=False, index=True)
+    hashed_password = Column(String(255), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
 class Session(Base):
     __tablename__ = "sessions"
 
     session_id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
     input_text = Column(Text, nullable=False)
     risk_level = Column(Enum(RiskLevelEnum), nullable=False)
     predicted_conditions = Column(JSON, nullable=True)

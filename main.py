@@ -18,6 +18,10 @@ from typing import Optional
 import json
 import base64
 import secrets
+import hashlib
+import secrets
+from datetime import datetime, timedelta
+from jose import JWTError, jwt
 try:
     from db import get_db
     import crud
@@ -29,6 +33,36 @@ except Exception:
     DB_ENABLED = False
 
 logger = logging.getLogger(__name__)
+
+def hash_password(password: str) -> str:
+    salt = secrets.token_hex(16)
+    return f"{salt}:{hashlib.sha256((salt + password).encode()).hexdigest()}"
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    try:
+        salt, hash_value = hashed_password.split(":", 1)
+        return hashlib.sha256((salt + plain_password).encode()).hexdigest() == hash_value
+    except ValueError:
+        return False
+
+# JWT settings
+SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "your-secret-key")
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+
+def create_access_token(data: dict):
+    to_encode = data.copy()
+    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+def verify_token(token: str):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        return payload
+    except JWTError:
+        return None
 
 
 # Simple in-memory rate limiter state (per-IP). This is intentionally a small
@@ -136,14 +170,51 @@ class TriageResponse(BaseModel):
     matches: Optional[list[str]] = None
 
 
+class UserRegister(BaseModel):
+    username: str
+    email: str
+    password: str
+
+
+class UserLogin(BaseModel):
+    username_or_email: str
+    password: str
+
+
+class UserResponse(BaseModel):
+    id: int
+    username: str
+    email: str
+    created_at: datetime
+
+
+def get_current_user_id(request: Request) -> Optional[int]:
+    """Extract user_id from JWT token if present, otherwise return None for anonymous users."""
+    auth_header = request.headers.get("authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        return None
+
+    token = auth_header.split(" ")[1]
+    payload = verify_token(token)
+    if not payload:
+        return None
+
+    user_id = payload.get("sub")
+    return int(user_id) if user_id else None
+
+
 @app.post("/triage", response_model=TriageResponse)
-def triage(req: TriageRequest):
+def triage(req: TriageRequest, request: Request = None):
     # Basic input validation: prevent extremely long inputs
     if req.symptom and len(req.symptom) > 2000:
         return JSONResponse({"detail": "symptom text too long"}, status_code=413)
 
     risk, suggestion, conditions, score, matches = classify_symptom(req.symptom)
-    # store session (anonymous user)
+    
+    # Get user_id if authenticated, otherwise None for anonymous
+    user_id = get_current_user_id(request) if request else None
+    
+    # store session
     try:
         if DB_ENABLED:
             # create a generator and get the session, ensure we close the generator so
@@ -151,7 +222,7 @@ def triage(req: TriageRequest):
             _gen = get_db()
             db = next(_gen)
             try:
-                crud.create_session_with_audit(db, input_text=req.symptom, risk_level=risk, predicted_conditions=conditions, next_step=suggestion, confidence_score=score, endpoint="/triage", fallback_to_rule=False)
+                crud.create_session_with_audit(db, input_text=req.symptom, risk_level=risk, predicted_conditions=conditions, next_step=suggestion, confidence_score=score, endpoint="/triage", fallback_to_rule=False, user_id=user_id)
             finally:
                 try:
                     _gen.close()
@@ -164,7 +235,7 @@ def triage(req: TriageRequest):
 
 
 @app.post("/triage_ml", response_model=TriageResponse)
-def triage_ml(req: TriageRequest):
+def triage_ml(req: TriageRequest, request: Request = None):
     """Optional ML-powered triage endpoint.
 
     This will attempt to use a transformers zero-shot model. If the model is
@@ -183,13 +254,16 @@ def triage_ml(req: TriageRequest):
         fallback = True
         risk, suggestion, conditions, score, matches = classify_symptom(req.symptom)
 
+    # Get user_id if authenticated, otherwise None for anonymous
+    user_id = get_current_user_id(request) if request else None
+    
     # Audit log with fallback info
     try:
         if DB_ENABLED:
             _gen = get_db()
             db = next(_gen)
             try:
-                crud.create_session_with_audit(db, input_text=req.symptom, risk_level=risk, predicted_conditions=conditions, next_step=suggestion, confidence_score=score, endpoint="/triage_ml", fallback_to_rule=fallback)
+                crud.create_session_with_audit(db, input_text=req.symptom, risk_level=risk, predicted_conditions=conditions, next_step=suggestion, confidence_score=score, endpoint="/triage_ml", fallback_to_rule=fallback, user_id=user_id)
             finally:
                 try:
                     _gen.close()
@@ -199,6 +273,140 @@ def triage_ml(req: TriageRequest):
         logger.exception("Failed to record ML session")
 
     return TriageResponse(risk=risk, suggestion=suggestion, conditions=conditions, score=score, matches=matches)
+
+
+@app.post("/auth/register")
+def register(user: UserRegister):
+    if not DB_ENABLED:
+        raise HTTPException(status_code=503, detail="Database not enabled")
+
+    db_gen = get_db()
+    db: Session = next(db_gen)
+    try:
+        # Check if user exists
+        from models import User
+        existing = db.query(User).filter((User.username == user.username) | (User.email == user.email)).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="Username or email already registered")
+
+        hashed_password = hash_password(user.password)
+        new_user = User(username=user.username, email=user.email, hashed_password=hashed_password)
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+        return {"message": "User registered successfully", "user_id": new_user.id}
+    finally:
+        try:
+            db_gen.close()
+        except Exception:
+            pass
+
+
+@app.post("/auth/login")
+def login(user: UserLogin):
+    if not DB_ENABLED:
+        raise HTTPException(status_code=503, detail="Database not enabled")
+
+    db_gen = get_db()
+    db: Session = next(db_gen)
+    try:
+        from models import User
+        db_user = db.query(User).filter((User.username == user.username_or_email) | (User.email == user.username_or_email)).first()
+        if not db_user or not verify_password(user.password, db_user.hashed_password):
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+
+        access_token = create_access_token({"sub": str(db_user.id)})
+        return {"access_token": access_token, "token_type": "bearer"}
+    finally:
+        try:
+            db_gen.close()
+        except Exception:
+            pass
+
+
+@app.get("/auth/sessions")
+def user_sessions(request: Request):
+    auth_header = request.headers.get("authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    token = auth_header.split(" ")[1]
+    payload = verify_token(token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    user_id = payload.get("sub")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    if not DB_ENABLED:
+        raise HTTPException(status_code=503, detail="Database not enabled")
+
+    db_gen = get_db()
+    db: Session = next(db_gen)
+    try:
+        from models import Session as SessionModel
+        # Get sessions for this user
+        sessions = db.query(SessionModel).filter(SessionModel.user_id == int(user_id)).order_by(SessionModel.created_at.desc()).all()
+        
+        # Format the response
+        result = []
+        for s in sessions:
+            result.append({
+                "session_id": s.session_id,
+                "input_text": s.input_text,
+                "risk_level": getattr(s.risk_level, 'name', str(s.risk_level)),
+                "predicted_conditions": s.predicted_conditions,
+                "next_step": s.next_step,
+                "confidence_score": s.confidence_score,
+                "created_at": s.created_at.isoformat() if s.created_at else None
+            })
+        
+        return result
+    finally:
+        try:
+            db_gen.close()
+        except Exception:
+            pass
+
+
+@app.get("/auth/profile")
+def get_profile(request: Request):
+    auth_header = request.headers.get("authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    token = auth_header.split(" ")[1]
+    payload = verify_token(token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    user_id = payload.get("sub")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    if not DB_ENABLED:
+        raise HTTPException(status_code=503, detail="Database not enabled")
+
+    db_gen = get_db()
+    db: Session = next(db_gen)
+    try:
+        from models import User
+        db_user = db.query(User).filter(User.id == int(user_id)).first()
+        if not db_user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        return {
+            "id": db_user.id,
+            "username": db_user.username,
+            "email": db_user.email,
+            "created_at": db_user.created_at.isoformat() if db_user.created_at else None
+        }
+    finally:
+        try:
+            db_gen.close()
+        except Exception:
+            pass
 
 
 @app.get("/admin/sessions")

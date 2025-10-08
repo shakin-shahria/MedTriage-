@@ -17,7 +17,7 @@ def _anonymize_text(text: str) -> str:
     return text
 
 
-def create_session_with_audit(db: Session, *, input_text: str, risk_level: str, predicted_conditions: Optional[List[str]], next_step: str, confidence_score: Optional[float], endpoint: str, fallback_to_rule: bool):
+def create_session_with_audit(db: Session, *, input_text: str, risk_level: str, predicted_conditions: Optional[List[str]], next_step: str, confidence_score: Optional[float], endpoint: str, fallback_to_rule: bool, user_id: Optional[int] = None):
     """Create a session row and a corresponding audit_log entry in a transaction."""
     clean_text = _anonymize_text(input_text)
     # Normalize risk_level into the RiskLevelEnum used by the ORM
@@ -38,6 +38,7 @@ def create_session_with_audit(db: Session, *, input_text: str, risk_level: str, 
     preds = predicted_conditions if (predicted_conditions is not None) else []
 
     sess = models.Session(
+        user_id=user_id,
         input_text=clean_text,
         risk_level=risk_enum,
         predicted_conditions=preds,

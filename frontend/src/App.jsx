@@ -1,7 +1,62 @@
 import React, { useState, useEffect } from 'react'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import Login from './Login'
+import Register from './Register'
+import Profile from './Profile'
 
 export default function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [authLoading, setAuthLoading] = useState(true)
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const token = localStorage.getItem('token')
+      if (token) {
+        try {
+          const res = await fetch('http://127.0.0.1:8000/auth/profile', {
+            headers: { 'Authorization': `Bearer ${token}` },
+          })
+          setIsAuthenticated(res.ok)
+        } catch {
+          setIsAuthenticated(false)
+        }
+      } else {
+        setIsAuthenticated(false)
+      }
+      setAuthLoading(false)
+    }
+    
+    checkAuth()
+    
+    // Listen for storage changes (in case token is set in another tab)
+    const handleStorageChange = () => checkAuth()
+    const handleAuthChange = () => checkAuth()
+    
+    window.addEventListener('storage', handleStorageChange)
+    window.addEventListener('auth-change', handleAuthChange)
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange)
+      window.removeEventListener('auth-change', handleAuthChange)
+    }
+  }, [])
+
+  if (authLoading) {
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>
+  }
+
+  return (
+    <Routes>
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+      <Route path="/profile" element={isAuthenticated ? <Profile /> : <Navigate to="/login" />} />
+      <Route path="/" element={isAuthenticated ? <TriageApp /> : <Navigate to="/login" />} />
+    </Routes>
+  )
+}
+
+function TriageApp() {
   const [text, setText] = useState('')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState(null)
