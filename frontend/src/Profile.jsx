@@ -95,6 +95,18 @@ export default function Profile() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 py-12 px-4">
       <div className="max-w-6xl mx-auto">
+        {/* Top navbar */}
+        <nav className="flex items-center justify-between py-3 px-4 mb-6 rounded-lg bg-gradient-to-r from-indigo-600 via-fuchsia-500 to-orange-400 shadow-md text-white">
+          <div className="flex items-center space-x-3">
+            <div className="h-10 w-10 rounded-full bg-white/20 flex items-center justify-center text-white font-bold ring-2 ring-white/30">MT</div>
+            <div className="text-lg font-semibold">MedTriage</div>
+          </div>
+          <div className="flex items-center space-x-3">
+            <div className="hidden sm:block text-sm text-white/90">Signed in as <span className="font-medium">{user?.username}</span></div>
+            <div className="h-8 w-8 rounded-full bg-white/30 flex items-center justify-center text-sm font-semibold text-white ring-2 ring-white/40">{user?.username?.charAt(0)?.toUpperCase() || 'U'}</div>
+          </div>
+        </nav>
+
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-800 mb-2">Health Profile</h1>
           <p className="text-gray-600">Track your symptom assessments and health insights</p>
@@ -135,6 +147,34 @@ export default function Profile() {
                   New Assessment
                 </button>
               </div>
+            </div>
+
+            {/* Recent Assessments (moved under profile, same width) */}
+            <div className="mt-6 bg-white rounded-xl shadow-xl p-6">
+              <h3 className="text-lg font-semibold mb-3 text-gray-800">Recent Assessments</h3>
+              {sessions && sessions.length > 0 ? (
+                <div className="space-y-3">
+                  {sessions.slice(0, 5).map((session, index) => (
+                    <div key={session.session_id || index} className="border border-gray-200 rounded-lg p-3">
+                      <div className="flex justify-between items-start mb-1">
+                        <div>
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                            session.risk_level?.toLowerCase() === 'high' ? 'bg-red-100 text-red-800' :
+                            session.risk_level?.toLowerCase() === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-green-100 text-green-800'
+                          }`}>
+                            {session.risk_level || 'Unknown'}
+                          </span>
+                        </div>
+                        <div className="text-xs text-gray-500">{session.created_at ? new Date(session.created_at).toLocaleDateString() : '—'}</div>
+                      </div>
+                      <div className="text-sm text-gray-700">{session.input_text ? session.input_text.substring(0, 120) + (session.input_text.length > 120 ? '...' : '') : '—'}</div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-sm text-gray-500">No assessments yet.</div>
+              )}
             </div>
           </div>
 
@@ -182,6 +222,34 @@ export default function Profile() {
 
             {/* Important Messages */}
             <div className="bg-white rounded-xl shadow-xl p-6">
+              {/* Extra content: Trends and Saved Reports */}
+              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="p-3 bg-white border rounded">
+                  <div className="text-sm font-medium text-gray-800 mb-2">Trends (confidence)</div>
+                  <div className="h-12">
+                    <svg viewBox="0 0 100 20" className="w-full h-full">
+                      {(() => {
+                        const vals = sessions.slice(0, 10).map(s => s.confidence_score || 0)
+                        if (vals.length === 0) return null
+                        const max = Math.max(...vals, 0.01)
+                        const points = vals.map((v, i) => `${(i / (vals.length - 1 || 1)) * 100},${20 - (v / max) * 18}`).join(' ')
+                        return <polyline points={points} fill="none" stroke="#10B981" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      })()}
+                    </svg>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-white border rounded">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="text-sm font-medium text-gray-800">Saved Reports</div>
+                    <button className="text-xs text-indigo-600">Manage</button>
+                  </div>
+                  <ul className="text-sm text-gray-700">
+                    <li>Weekly summary · {analytics?.totalTests ?? 0} assessments</li>
+                    <li>High risk watchlist</li>
+                  </ul>
+                </div>
+              </div>
               <h2 className="text-xl font-semibold mb-4 text-gray-800">Health Insights</h2>
               <div className="space-y-4">
                 {analytics && analytics.totalTests === 0 && (
@@ -234,54 +302,7 @@ export default function Profile() {
               </div>
             </div>
 
-            {/* Previous Tests */}
-            <div className="bg-white rounded-xl shadow-xl p-6">
-              <h2 className="text-xl font-semibold mb-4 text-gray-800">Recent Assessments</h2>
-              {sessions && sessions.length > 0 ? (
-                <div className="space-y-4">
-                  {sessions.slice(0, 5).map((session, index) => (
-                    <div key={session.session_id || index} className="border border-gray-200 rounded-lg p-4">
-                      <div className="flex justify-between items-start mb-2">
-                        <div>
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            session.risk_level?.toLowerCase() === 'high' ? 'bg-red-100 text-red-800' :
-                            session.risk_level?.toLowerCase() === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-green-100 text-green-800'
-                          }`}>
-                            {session.risk_level || 'Unknown'}
-                          </span>
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          {session.created_at ? new Date(session.created_at).toLocaleDateString() : 'Unknown date'}
-                        </div>
-                      </div>
-                      <p className="text-sm text-gray-600 mb-2">
-                        {session.input_text?.substring(0, 100)}...
-                      </p>
-                      <p className="text-sm text-gray-800">
-                        <strong>Recommendation:</strong> {session.next_step || 'N/A'}
-                      </p>
-                      {session.confidence_score && (
-                        <p className="text-sm text-gray-600 mt-1">
-                          Confidence: {Math.round(session.confidence_score * 100)}%
-                        </p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <div className="text-4xl mb-4">📊</div>
-                  <p>No assessments yet. Start your first health check!</p>
-                  <button
-                    onClick={() => navigate('/')}
-                    className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
-                  >
-                    Take Assessment
-                  </button>
-                </div>
-              )}
-            </div>
+            {/* Right column - extra content intentionally removed to keep Recent Assessments under Profile for consistent width */}
           </div>
         </div>
       </div>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 
 export default function Login() {
   const [form, setForm] = useState({ username_or_email: '', password: '' })
@@ -35,44 +35,134 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center py-12 px-4">
-      <div className="max-w-md w-full bg-white rounded-xl shadow-xl p-8">
-        <h1 className="text-3xl font-bold text-gray-800 mb-6 text-center">Login</h1>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Username or Email</label>
-            <input
-              type="text"
-              name="username_or_email"
-              value={form.username_or_email}
-              onChange={handleChange}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              required
-            />
+    <div className="min-h-screen flex items-center justify-center py-12 px-4 bg-gray-50 relative overflow-hidden">
+      {/* Diagnostic-themed background SVG: faint grid + ECG waveform + medical icons */}
+      <svg aria-hidden="true" className="absolute inset-0 w-full h-full pointer-events-none" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800">
+        <defs>
+          <linearGradient id="ecgGrad" x1="0" x2="1">
+            <stop offset="0%" stopColor="#ffffff" />
+            <stop offset="100%" stopColor="#f1f5f9" />
+          </linearGradient>
+        </defs>
+        <rect width="1200" height="800" fill="url(#ecgGrad)" />
+
+        {/* faint clinical grid */}
+        <g stroke="#0f172a" strokeWidth="1" opacity="0.04">
+          {Array.from({ length: 25 }).map((_, i) => {
+            const x = i * 48
+            return <line key={`vx-${i}`} x1={x} y1={0} x2={x} y2={800} />
+          })}
+          {Array.from({ length: 17 }).map((_, i) => {
+            const y = i * 48
+            return <line key={`hy-${i}`} x1={0} y1={y} x2={1200} y2={y} />
+          })}
+        </g>
+
+        {/* ECG waveform path - low contrast and centered */}
+        <g transform="translate(80,420)" stroke="#0f172a" strokeWidth="3" fill="none" opacity="0.12">
+          <path d="M0 0 L40 0 L56 -36 L72 48 L88 -48 L120 0 L200 0 L216 -24 L232 12 L248 -60 L280 0 L360 0 L376 -20 L392 8 L408 -40 L444 0 L520 0 L560 -50 L600 60 L640 -20 L680 0 L760 0" strokeLinecap="round" strokeLinejoin="round" />
+        </g>
+
+        {/* small medical icons (cross, stethoscope circle) */}
+        <g transform="translate(920,120)" opacity="0.06" fill="#0f172a">
+          <rect x="0" y="0" width="160" height="160" rx="20" />
+          <g transform="translate(40,40)" fill="#fff">
+            <rect x="30" y="0" width="20" height="60" rx="3" />
+            <rect x="0" y="20" width="80" height="20" rx="3" />
+          </g>
+        </g>
+
+        {/* subtle pulse circles */}
+        <g opacity="0.05" fill="#0f172a">
+          <circle cx="1000" cy="640" r="60" />
+          <circle cx="110" cy="700" r="90" />
+        </g>
+      </svg>
+
+      <div className="relative z-10 max-w-4xl w-full bg-white rounded-2xl shadow-2xl overflow-hidden grid grid-cols-1 md:grid-cols-2">
+        {/* Left: Professional brand panel (replaces cartoon SVG) */}
+        <div className="bg-white p-8 flex flex-col items-start justify-center space-y-6 border-r border-gray-100">
+          <div className="flex items-center space-x-3">
+            {/* Simple logo mark */}
+            <div className="w-12 h-12 flex items-center justify-center rounded-md bg-indigo-600 text-white font-bold text-lg">MT</div>
+            <div>
+              <h2 className="text-xl font-semibold text-gray-800">MedTriage</h2>
+              <p className="text-sm text-gray-500">Secure clinical triage platform</p>
+            </div>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
-            <input
-              type="password"
-              name="password"
-              value={form.password}
-              onChange={handleChange}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              required
-            />
+
+          <div className="w-full max-w-xs">
+            <h3 className="text-2xl font-semibold text-gray-800">Welcome back</h3>
+            <p className="mt-2 text-sm text-gray-600">Sign in to access patient triage, clinical decision support, and secure records.</p>
+
+            <ul className="mt-6 space-y-3 text-sm text-gray-600">
+              <li className="flex items-start">
+                <span className="mr-3 text-indigo-600 mt-0.5">•</span>
+                <span>HIPAA-minded access controls</span>
+              </li>
+              <li className="flex items-start">
+                <span className="mr-3 text-indigo-600 mt-0.5">•</span>
+                <span>Encrypted sessions</span>
+              </li>
+              <li className="flex items-start">
+                <span className="mr-3 text-indigo-600 mt-0.5">•</span>
+                <span>Audit-ready logs</span>
+              </li>
+            </ul>
           </div>
-          {error && <p className="text-red-600 text-sm">{error}</p>}
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50"
-          >
-            {loading ? 'Logging in...' : 'Login'}
-          </button>
-        </form>
-        <p className="mt-4 text-center text-sm text-gray-600">
-          Don't have an account? <a href="/register" className="text-blue-600 hover:underline">Register</a>
-        </p>
+
+          <div className="mt-4 text-xs text-gray-400">
+            <p>For organization sign-in, use your institution credentials. Need help? Contact <a href="mailto:support@medtriage.example" className="text-indigo-600">support</a>.</p>
+          </div>
+        </div>
+
+        {/* Right: Form */}
+        <div className="p-8 flex items-center justify-center">
+          <div className="w-full max-w-md">
+            <h1 className="text-3xl font-bold text-gray-800 mb-4">Sign in to MedTriage</h1>
+            <p className="text-sm text-gray-500 mb-6">Fast. Secure. Professional.</p>
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div>
+                <label htmlFor="username_or_email" className="block text-sm font-medium text-gray-700 mb-2">Username or Email</label>
+                <input
+                  id="username_or_email"
+                  type="text"
+                  name="username_or_email"
+                  value={form.username_or_email}
+                  onChange={handleChange}
+                  className="w-full p-3 border border-gray-200 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-400 focus:border-transparent"
+                  required
+                />
+              </div>
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">Password</label>
+                <input
+                  id="password"
+                  type="password"
+                  name="password"
+                  value={form.password}
+                  onChange={handleChange}
+                  className="w-full p-3 border border-gray-200 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-400 focus:border-transparent"
+                  required
+                />
+              </div>
+              {error && <p className="text-red-600 text-sm">{error}</p>}
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full px-6 py-3 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+              >
+                {loading ? 'Logging in...' : 'Login'}
+              </button>
+
+              <div className="flex items-center justify-between text-sm text-gray-500">
+                <Link to="/register" className="text-indigo-600 hover:underline">Create account</Link>
+                <a href="#" className="hover:underline">Forgot password?</a>
+              </div>
+            </form>
+            <p className="mt-6 text-xs text-gray-400">By signing in you agree to our terms and privacy policy.</p>
+          </div>
+        </div>
       </div>
     </div>
   )

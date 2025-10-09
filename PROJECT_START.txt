@@ -342,3 +342,86 @@ lsof -ti:5174 | xargs kill -9
 ```
 
 That's it! Just run these commands in order and you'll be up and running. 🎉
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Nice — glad it’s running. Below are the exact commands I used in this session (copyable), plus a short explanation of how many servers the project needs and which ones are optional.
+
+## Exact commands I ran to start the servers
+(These were executed from your macOS zsh environment; replace paths/env values if needed.)
+
+1) Backend — full chained command (what I ran most often so uvicorn runs in the project venv and uses MySQL URL)
+```bash
+cd /Users/shakin/Developer/medtriage
+source venv/bin/activate
+export MEDTRIAGE_DATABASE_URL='mysql+pymysql://medtriage_db:1234@127.0.0.1:3306/medtriage_db'
+MEDTRIAGE_PRELOAD_ML=0 ./venv/bin/uvicorn main:app --reload --host 127.0.0.1 --port 8000
+```
+
+(Variants I also used:
+- Without exporting DB URL: `MEDTRIAGE_PRELOAD_ML=0 ./venv/bin/uvicorn main:app --reload --host 127.0.0.1 --port 8000`
+- Direct venv uvicorn path: `./venv/bin/uvicorn main:app --reload`)
+
+2) Frontend — install deps and start Vite (I ran `npm install` then started dev)
+```bash
+cd /Users/shakin/Developer/medtriage/frontend
+npm install        # first time only
+npm run dev
+```
+
+(When forcing a specific port:)
+```bash
+npm run dev -- --port 5173
+```
+
+3) Auxiliary/diagnostic commands I used while troubleshooting
+```bash
+lsof -i :8000 -sTCP:LISTEN -n -P           # find process using port 8000
+lsof -i :5173 -sTCP:LISTEN -n -P           # find process using port 5173
+lsof -ti:8000 | xargs kill -9              # kill whatever is using 8000
+kill <pid>                                 # kill specific PID(s)
+curl -I http://127.0.0.1:8000/             # check backend HTTP response
+curl -s -X POST http://127.0.0.1:8000/triage -H "Content-Type: application/json" -d '{"symptom":"chest pain"}'
+```
+
+## How many servers are needed for this project
+- Required: 2 servers (during local development)
+  - Backend: FastAPI served by uvicorn. (Default port 8000)
+  - Frontend: React app served by Vite dev server. (Default port 5173; falls back to 5174 if 5173 is busy)
+
+- Optional/External (not code servers but required if you choose them):
+  - MySQL server (if you set `MEDTRIAGE_DATABASE_URL` to use MySQL). If you leave DB config unset, the app uses the bundled SQLite file (medtriage_dev.db) and you don't need MySQL running.
+  - If you enable ML preload (MEDTRIAGE_PRELOAD_ML=1) the ML model is loaded by the backend process — no separate ML server is started, it's part of the backend process.
+
+## Quick ports & URLs
+- Backend: http://127.0.0.1:8000
+  - Swagger UI: http://127.0.0.1:8000/docs
+  - Demo HTML: http://127.0.0.1:8000/browser_post.html
+- Frontend: http://localhost:5173/ (or http://localhost:5174/ if 5173 was already in use)
+
+## Notes / tips
+- I saw a non-fatal urllib3 OpenSSL/LibreSSL warning when starting uvicorn — it’s a warning only.
+- Best practice during development: run the backend and frontend in separate terminals so you can see logs and Ctrl+C each independently.
+- If you want me to restart the frontend explicitly on 5173 now (or free whatever is using 5173), tell me and I’ll do that and confirm the URL.
+
+If you want, I can paste the exact terminal output logs for the commands I ran (uvicorn and Vite startup lines), or run a quick smoke test POST to `/triage` and show the response. Which would you prefer next?

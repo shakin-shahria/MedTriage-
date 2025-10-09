@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import Login from './Login'
 import Register from './Register'
@@ -8,6 +8,7 @@ import Profile from './Profile'
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [authLoading, setAuthLoading] = useState(true)
+  const [username, setUsername] = useState(null)
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -18,6 +19,14 @@ export default function App() {
             headers: { 'Authorization': `Bearer ${token}` },
           })
           setIsAuthenticated(res.ok)
+          if (res.ok) {
+            try {
+              const data = await res.json()
+              setUsername(data.username)
+            } catch (e) {
+              // ignore parse errors
+            }
+          }
         } catch {
           setIsAuthenticated(false)
         }
@@ -47,17 +56,33 @@ export default function App() {
   }
 
   return (
-    <Routes>
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
-      <Route path="/profile" element={isAuthenticated ? <Profile /> : <Navigate to="/login" />} />
-      <Route path="/" element={isAuthenticated ? <TriageApp /> : <Navigate to="/login" />} />
-    </Routes>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
+      <div className="max-w-6xl mx-auto px-4 py-6">
+        <nav className="flex items-center justify-between py-3 px-4 mb-6 rounded-lg bg-gradient-to-r from-indigo-600 via-fuchsia-500 to-orange-400 shadow-md text-white">
+          <div className="flex items-center space-x-3">
+            <div className="h-10 w-10 rounded-full bg-white/20 flex items-center justify-center text-white font-bold ring-2 ring-white/30">MT</div>
+            <div className="text-lg font-semibold">MedTriage</div>
+          </div>
+          <div className="flex items-center space-x-3">
+            <div className="hidden sm:block text-sm text-white/90">Signed in as <span className="font-medium">{username || 'User'}</span></div>
+            <div className="h-8 w-8 rounded-full bg-white/30 flex items-center justify-center text-sm font-semibold text-white ring-2 ring-white/40">{username?.charAt(0)?.toUpperCase() || 'U'}</div>
+          </div>
+        </nav>
+
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/profile" element={isAuthenticated ? <Profile /> : <Navigate to="/login" />} />
+          <Route path="/" element={isAuthenticated ? <TriageApp /> : <Navigate to="/login" />} />
+        </Routes>
+      </div>
+    </div>
   )
 }
 
 function TriageApp() {
   const [text, setText] = useState('')
+  const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState(null)
   const [error, setError] = useState(null)
@@ -218,6 +243,14 @@ function TriageApp() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 py-12">
       <div className="max-w-6xl mx-auto px-4">
+        <div className="flex justify-end mb-4">
+          <button
+            onClick={() => navigate('/profile')}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-lg shadow hover:bg-indigo-700"
+          >
+            ← Back to Profile
+          </button>
+        </div>
         <motion.div
           initial={{ opacity: 0, y: -30 }}
           animate={{ opacity: 1, y: 0 }}
