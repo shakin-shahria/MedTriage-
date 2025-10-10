@@ -14,11 +14,6 @@ class RiskLevelEnum(enum.Enum):
     high = "high"
 
 
-class UserRoleEnum(enum.Enum):
-    user = "user"
-    admin = "admin"
-
-
 class User(Base):
     __tablename__ = "users"
 
@@ -26,8 +21,6 @@ class User(Base):
     username = Column(String(50), unique=True, nullable=False, index=True)
     email = Column(String(100), unique=True, nullable=False, index=True)
     hashed_password = Column(String(255), nullable=False)
-    # role column: use Enum to keep values consistent
-    role = Column(Enum(UserRoleEnum), nullable=False, default=UserRoleEnum.user)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 

@@ -506,39 +506,3 @@ Track performance metrics to demonstrate reliability and engineering rigor.
 
 
 
-I'll create a short todo list for the steps (marking the first as in-progress), then mark all completed to show the instructions are delivered. Then I’ll give the concise run steps and commands. 
-
-Created 3 todos
-
-Here are very short, step-by-step instructions to start everything locally.
-
-1) Prepare environment
-- Ensure MySQL is running and accessible.
-- Activate Python venv:
-  source venv/bin/activate
-- Set DB URL (example):
-  export MEDTRIAGE_DATABASE_URL='mysql+pymysql://user:pass@127.0.0.1:3306/medtriage_db'
-
-2) Start backend (FastAPI / Uvicorn)
-- Optional: preload ML model at startup (downloads model):
-  export MEDTRIAGE_PRELOAD_ML=1
-- Run:
-  MEDTRIAGE_PRELOAD_ML=0 ./venv/bin/uvicorn main:app --reload --host 127.0.0.1 --port 8000
-
-3) Start frontend (Vite)
-- From project root:
-  cd frontend
-  npm install
-  npm run dev
-- Open browser at http://127.0.0.1:5173 (or the port Vite prints)
-
-4) Quick checks
-- Backend docs: http://127.0.0.1:8000/docs
-- Frontend: http://127.0.0.1:5173
-
-Notes
-- If you set MEDTRIAGE_PRELOAD_ML=1 the server will download the Hugging Face model on startup (internet required).
-- MEDTRIAGE_DATABASE_URL must be a valid MySQL URL (db.py enforces this).
-- To stop servers: Ctrl+C in the terminals or kill the process.
-
-Done — mark next if you want me to start them for you here (I can run the backend and/or frontend).

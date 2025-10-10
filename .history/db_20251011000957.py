@@ -9,15 +9,16 @@ logger = logging.getLogger(__name__)
 # for local development so sessions are visible without installing MySQL.
 DATABASE_URL = os.environ.get("MEDTRIAGE_DATABASE_URL")
 if not DATABASE_URL:
-    raise RuntimeError("MEDTRIAGE_DATABASE_URL must be set to your MySQL connection string (no sqlite fallback). Example: mysql+pymysql://user:pass@127.0.0.1/medtriage_db")
+    # default to a local sqlite file for convenience
+    DATABASE_URL = "sqlite:///./medtriage_dev.db"
 
 logger.info(f"Using database URL: {DATABASE_URL}")
 
-# Create engine with MySQL-appropriate options
+# Choose engine options depending on DB type
 if DATABASE_URL.startswith("sqlite:"):
-    # Disallow sqlite in production mode; raise to avoid accidental local sqlite usage
-    raise RuntimeError("SQLite is not supported in this configuration. Set MEDTRIAGE_DATABASE_URL to a MySQL URL.")
+    engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 else:
+    # MySQL / other DBs
     engine = create_engine(DATABASE_URL, pool_pre_ping=True, pool_size=5, max_overflow=10)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

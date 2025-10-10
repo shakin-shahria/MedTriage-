@@ -35,9 +35,8 @@ export default function Login() {
         if (profileRes.ok) {
           const profile = await profileRes.json()
           if (profile.role === 'admin') {
-              // Persist admin token for Admin UI convenience and replace history so back doesn't go to login
-              try { localStorage.setItem('medtriage_admin_token', `Bearer ${data.access_token}`) } catch (e) {}
-              navigate('/admin-dashboard', { replace: true })
+            // Replace history so back doesn't go to login
+            navigate('/admin-dashboard', { replace: true })
             return
           }
         }

@@ -93,8 +93,8 @@ export default function Profile() {
   if (error) return <div className="min-h-screen flex items-center justify-center text-red-600">{error}</div>
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 pb-12">
-  <div className="max-w-6xl mx-auto px-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 m-0 p-0">
+      <div className="w-full px-0 mx-0">
         {/* Top navbar */}
   <nav className="flex items-center justify-between py-3 px-2 mb-4 rounded-none bg-gradient-to-r from-indigo-600 via-fuchsia-500 to-orange-400 shadow-md text-white">
           <div className="flex items-center space-x-3">

@@ -212,7 +212,6 @@ class TriageResponse(BaseModel):
     conditions: list[str]
     score: Optional[float] = None
     matches: Optional[list[str]] = None
-    session_id: Optional[int] = None
 
 
 class UserRegister(BaseModel):
@@ -267,7 +266,7 @@ def triage(req: TriageRequest, request: Request = None):
             _gen = get_db()
             db = next(_gen)
             try:
-                sess, _ = crud.create_session_with_audit(db, input_text=req.symptom, risk_level=risk, predicted_conditions=conditions, next_step=suggestion, confidence_score=score, endpoint="/triage", fallback_to_rule=False, user_id=user_id)
+                crud.create_session_with_audit(db, input_text=req.symptom, risk_level=risk, predicted_conditions=conditions, next_step=suggestion, confidence_score=score, endpoint="/triage", fallback_to_rule=False, user_id=user_id)
             finally:
                 try:
                     _gen.close()
@@ -276,14 +275,7 @@ def triage(req: TriageRequest, request: Request = None):
     except Exception:
         logger.exception("Failed to record session")
 
-    # If session was created above, include session_id in response
-    sess_id = None
-    try:
-        sess_id = sess.session_id  # type: ignore
-    except Exception:
-        sess_id = None
-
-    return TriageResponse(risk=risk, suggestion=suggestion, conditions=conditions, score=score, matches=matches, session_id=sess_id)
+    return TriageResponse(risk=risk, suggestion=suggestion, conditions=conditions, score=score, matches=matches)
 
 
 @app.post("/triage_ml", response_model=TriageResponse)
@@ -315,7 +307,7 @@ def triage_ml(req: TriageRequest, request: Request = None):
             _gen = get_db()
             db = next(_gen)
             try:
-                sess, _ = crud.create_session_with_audit(db, input_text=req.symptom, risk_level=risk, predicted_conditions=conditions, next_step=suggestion, confidence_score=score, endpoint="/triage_ml", fallback_to_rule=fallback, user_id=user_id)
+                crud.create_session_with_audit(db, input_text=req.symptom, risk_level=risk, predicted_conditions=conditions, next_step=suggestion, confidence_score=score, endpoint="/triage_ml", fallback_to_rule=fallback, user_id=user_id)
             finally:
                 try:
                     _gen.close()
@@ -324,13 +316,7 @@ def triage_ml(req: TriageRequest, request: Request = None):
     except Exception:
         logger.exception("Failed to record ML session")
 
-    sess_id = None
-    try:
-        sess_id = sess.session_id  # type: ignore
-    except Exception:
-        sess_id = None
-
-    return TriageResponse(risk=risk, suggestion=suggestion, conditions=conditions, score=score, matches=matches, session_id=sess_id)
+    return TriageResponse(risk=risk, suggestion=suggestion, conditions=conditions, score=score, matches=matches)
 
 
 @app.post("/auth/register")
@@ -571,16 +557,6 @@ def admin_sessions(limit: int = 20, page: Optional[int] = None, page_size: int =
             out_items = []
             for s in items:
                 audits = db.query(AuditLogModel).filter(AuditLogModel.session_id == s.session_id).order_by(AuditLogModel.timestamp.desc()).all()
-                # attempt to fetch user info if available
-                user_info = None
-                try:
-                    from models import User as UserModel
-                    if getattr(s, 'user_id', None):
-                        u = db.query(UserModel).filter(UserModel.id == int(s.user_id)).first()
-                        if u:
-                            user_info = {"user_id": u.id, "username": u.username, "user_email": u.email}
-                except Exception:
-                    user_info = None
                 
                 # Deserialize predicted_conditions from JSON
                 try:
@@ -596,7 +572,6 @@ def admin_sessions(limit: int = 20, page: Optional[int] = None, page_size: int =
                     "next_step": s.next_step,
                     "confidence_score": s.confidence_score,
                     "created_at": s.created_at.isoformat() if s.created_at is not None else None,
-                    "user": user_info,
                     "audits": [
                         {"log_id": a.log_id, "endpoint": a.endpoint, "fallback_to_rule": bool(a.fallback_to_rule), "timestamp": a.timestamp.isoformat() if a.timestamp is not None else None}
                         for a in audits
@@ -610,16 +585,6 @@ def admin_sessions(limit: int = 20, page: Optional[int] = None, page_size: int =
         for s in sessions:
             # find audits for this session
             audits = db.query(AuditLogModel).filter(AuditLogModel.session_id == s.session_id).order_by(AuditLogModel.timestamp.desc()).all()
-            # attempt to fetch user info if available
-            user_info = None
-            try:
-                from models import User as UserModel
-                if getattr(s, 'user_id', None):
-                    u = db.query(UserModel).filter(UserModel.id == int(s.user_id)).first()
-                    if u:
-                        user_info = {"user_id": u.id, "username": u.username, "user_email": u.email}
-            except Exception:
-                user_info = None
             
             # Deserialize predicted_conditions from JSON
             try:
@@ -635,7 +600,6 @@ def admin_sessions(limit: int = 20, page: Optional[int] = None, page_size: int =
                 "next_step": s.next_step,
                 "confidence_score": s.confidence_score,
                 "created_at": s.created_at.isoformat() if s.created_at is not None else None,
-                "user": user_info,
                 "audits": [
                     {"log_id": a.log_id, "endpoint": a.endpoint, "fallback_to_rule": bool(a.fallback_to_rule), "timestamp": a.timestamp.isoformat() if a.timestamp is not None else None}
                     for a in audits

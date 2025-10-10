@@ -26,25 +26,6 @@ export default function Login() {
       localStorage.setItem('token', data.access_token)
       // Notify other components that auth state changed
       window.dispatchEvent(new Event('auth-change'))
-      // After storing the token, probe the profile endpoint to detect the
-      // user's role so admins can be sent straight to the Admin dashboard.
-      try {
-        const profileRes = await fetch('http://127.0.0.1:8000/auth/profile', {
-          headers: { 'Authorization': `Bearer ${data.access_token}` },
-        })
-        if (profileRes.ok) {
-          const profile = await profileRes.json()
-          if (profile.role === 'admin') {
-              // Persist admin token for Admin UI convenience and replace history so back doesn't go to login
-              try { localStorage.setItem('medtriage_admin_token', `Bearer ${data.access_token}`) } catch (e) {}
-              navigate('/admin-dashboard', { replace: true })
-            return
-          }
-        }
-      } catch (e) {
-        // ignore profile fetch errors and fall back to profile page
-      }
-
       navigate('/profile')
     } catch (err) {
       setError(err.message)

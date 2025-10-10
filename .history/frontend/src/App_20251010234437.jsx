@@ -5,7 +5,6 @@ import Login from './Login'
 import Register from './Register'
 import Profile from './Profile'
 import Admin from './Admin'
-import AdminDashboard from './AdminDashboard'
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -61,15 +60,14 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
-      <div className="max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
+      <div className="w-full min-h-screen px-0 py-0">
 
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/profile" element={isAuthenticated ? <Profile /> : <Navigate to="/login" />} />
           <Route path="/admin" element={isAuthenticated && role === 'admin' ? <Admin /> : <Navigate to={isAuthenticated ? "/profile" : "/login"} />} />
-          <Route path="/admin-dashboard" element={isAuthenticated && role === 'admin' ? <AdminDashboard /> : <Navigate to={isAuthenticated ? "/profile" : "/login"} />} />
-          <Route path="/" element={isAuthenticated ? ((role === 'admin') ? <Navigate to="/admin-dashboard" replace={true} /> : <TriageApp />) : <Navigate to="/login" />} />
+          <Route path="/" element={isAuthenticated ? (role === 'admin' ? <Navigate to="/admin" replace={true} /> : <TriageApp />) : <Navigate to="/login" />} />
         </Routes>
       </div>
     </div>
@@ -133,8 +131,8 @@ function TriageApp() {
   }
 
   return (
-    <div>
-      <div className="w-full">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
+      <div className="w-full px-0">
         <div className="flex justify-end mb-4 mt-3">
           <button
             onClick={() => navigate('/profile')}

@@ -1,12 +1,15 @@
-INFO:     Will watch for changes in these directories: ['/Users/shakin/Developer/medtriage']
-INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
-INFO:     Started reloader process [9117] using WatchFiles
 /Users/shakin/Developer/medtriage/venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
   warnings.warn(
-INFO:     Started server process [9157]
+INFO:     Started server process [79463]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
-INFO:     127.0.0.1:50090 - "GET /docs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:50097 - "GET / HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:50097 - "GET /favicon.ico HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:50097 - "GET / HTTP/1.1" 404 Not Found
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:51708 - "POST /auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51708 - "GET /auth/profile HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51709 - "GET /auth/profile HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51708 - "GET /auth/profile HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51711 - "GET /auth/profile HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51709 - "GET /admin/sessions?page=1&page_size=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51711 - "GET /admin/sessions?page=1&page_size=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51719 - "GET /auth/profile HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51718 - "GET /admin/sessions?page=1&page_size=10 HTTP/1.1" 200 OK

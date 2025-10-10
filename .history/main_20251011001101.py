@@ -571,16 +571,6 @@ def admin_sessions(limit: int = 20, page: Optional[int] = None, page_size: int =
             out_items = []
             for s in items:
                 audits = db.query(AuditLogModel).filter(AuditLogModel.session_id == s.session_id).order_by(AuditLogModel.timestamp.desc()).all()
-                # attempt to fetch user info if available
-                user_info = None
-                try:
-                    from models import User as UserModel
-                    if getattr(s, 'user_id', None):
-                        u = db.query(UserModel).filter(UserModel.id == int(s.user_id)).first()
-                        if u:
-                            user_info = {"user_id": u.id, "username": u.username, "user_email": u.email}
-                except Exception:
-                    user_info = None
                 
                 # Deserialize predicted_conditions from JSON
                 try:
@@ -596,7 +586,6 @@ def admin_sessions(limit: int = 20, page: Optional[int] = None, page_size: int =
                     "next_step": s.next_step,
                     "confidence_score": s.confidence_score,
                     "created_at": s.created_at.isoformat() if s.created_at is not None else None,
-                    "user": user_info,
                     "audits": [
                         {"log_id": a.log_id, "endpoint": a.endpoint, "fallback_to_rule": bool(a.fallback_to_rule), "timestamp": a.timestamp.isoformat() if a.timestamp is not None else None}
                         for a in audits
@@ -610,16 +599,6 @@ def admin_sessions(limit: int = 20, page: Optional[int] = None, page_size: int =
         for s in sessions:
             # find audits for this session
             audits = db.query(AuditLogModel).filter(AuditLogModel.session_id == s.session_id).order_by(AuditLogModel.timestamp.desc()).all()
-            # attempt to fetch user info if available
-            user_info = None
-            try:
-                from models import User as UserModel
-                if getattr(s, 'user_id', None):
-                    u = db.query(UserModel).filter(UserModel.id == int(s.user_id)).first()
-                    if u:
-                        user_info = {"user_id": u.id, "username": u.username, "user_email": u.email}
-            except Exception:
-                user_info = None
             
             # Deserialize predicted_conditions from JSON
             try:
@@ -635,7 +614,6 @@ def admin_sessions(limit: int = 20, page: Optional[int] = None, page_size: int =
                 "next_step": s.next_step,
                 "confidence_score": s.confidence_score,
                 "created_at": s.created_at.isoformat() if s.created_at is not None else None,
-                "user": user_info,
                 "audits": [
                     {"log_id": a.log_id, "endpoint": a.endpoint, "fallback_to_rule": bool(a.fallback_to_rule), "timestamp": a.timestamp.isoformat() if a.timestamp is not None else None}
                     for a in audits
