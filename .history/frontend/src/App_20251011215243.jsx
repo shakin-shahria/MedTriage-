@@ -138,15 +138,12 @@ function TriageApp() {
     <div>
       <div className="w-full">
         <div className="flex justify-end mb-4 mt-3">
-          <div className="flex gap-3">
-            {/* Heart Triage button moved to Profile page */}
-            <button
-              onClick={() => navigate('/profile')}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg shadow hover:bg-indigo-700"
-            >
-              ← Back to Profile
-            </button>
-          </div>
+          <button
+            onClick={() => navigate('/profile')}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-lg shadow hover:bg-indigo-700"
+          >
+            ← Back to Profile
+          </button>
         </div>
         <motion.div
           initial={{ opacity: 0, y: -30 }}

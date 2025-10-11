@@ -178,9 +178,6 @@ Quick smoke test (from another terminal)
 - Test rule-based triage (curl):
   curl -s -X POST http://127.0.0.1:8000/triage -H "Content-Type: application/json" -d '{"symptom":"chest pain"}' | jq
 
-- Test heart-attack triage (curl):
-  curl -s -X POST http://127.0.0.1:8000/triage_heart -H "Content-Type: application/json" -d '{"age":63,"sex":1,"cp":3,"trestbps":145,"chol":233,"fbs":1,"thalach":150,"exang":0,"oldpeak":2.3}' | jq
-
 - Test admin endpoint (replace TOKEN with your admin token):
   curl -s -H "X-Admin-Token: TOKEN" http://127.0.0.1:8000/admin/sessions | jq
 

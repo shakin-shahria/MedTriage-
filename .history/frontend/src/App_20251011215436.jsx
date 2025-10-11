@@ -139,7 +139,7 @@ function TriageApp() {
       <div className="w-full">
         <div className="flex justify-end mb-4 mt-3">
           <div className="flex gap-3">
-            {/* Heart Triage button moved to Profile page */}
+            <button onClick={() => navigate('/heart')} className="px-4 py-2 bg-red-600 text-white rounded-lg shadow hover:bg-red-700">❤️ Heart Triage</button>
             <button
               onClick={() => navigate('/profile')}
               className="px-4 py-2 bg-indigo-600 text-white rounded-lg shadow hover:bg-indigo-700"
@@ -215,6 +215,16 @@ function TriageApp() {
                   )}
                 </motion.button>
                 
+                <motion.button
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.95 }}
+                  type="button"
+                  className="px-5 py-3 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-all duration-200"
+                  onClick={() => navigate('/heart')}
+                >
+                  ❤️ Heart Triage
+                </motion.button>
+
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}

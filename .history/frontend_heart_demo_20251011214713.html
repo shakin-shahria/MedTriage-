@@ -1,0 +1,37 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Heart Triage Demo</title>
+  </head>
+  <body>
+    <h1>Heart Triage Demo</h1>
+    <form id="heart-form">
+      <label>Age: <input name="age" value="63"/></label><br/>
+      <label>Sex: <input name="sex" value="1"/></label><br/>
+      <label>CP: <input name="cp" value="3"/></label><br/>
+      <label>Rest BP: <input name="trestbps" value="145"/></label><br/>
+      <label>Chol: <input name="chol" value="233"/></label><br/>
+      <label>FBS: <input name="fbs" value="1"/></label><br/>
+      <label>Thalach: <input name="thalach" value="150"/></label><br/>
+      <label>Exang: <input name="exang" value="0"/></label><br/>
+      <label>Oldpeak: <input name="oldpeak" value="2.3"/></label><br/>
+      <button type="submit">Check</button>
+    </form>
+    <pre id="out"></pre>
+    <script>
+      document.getElementById('heart-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const form = e.target;
+        const data = {};
+        for (const el of form.elements) {
+          if (!el.name) continue;
+          data[el.name] = el.value;
+        }
+        const res = await fetch('/triage_heart', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data)});
+        const json = await res.json();
+        document.getElementById('out').textContent = JSON.stringify(json, null, 2);
+      });
+    </script>
+  </body>
+</html>

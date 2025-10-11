@@ -362,74 +362,10 @@ def triage_heart(req: HeartTriageRequest, request: Request = None):
     """Heart-attack-specific triage endpoint. Returns prediction, confidence and important features.
 
     Falls back to rule-based classifier if heart model fails.
-
-        OpenAPI example input:
-
-        {
-            "age": 63,
-            "sex": 1,
-            "cp": 3,
-            "trestbps": 145,
-            "chol": 233,
-            "fbs": 1,
-            "thalach": 150,
-            "exang": 0,
-            "oldpeak": 2.3
-        }
-
-        Example response:
-
-        {
-            "prediction": "Heart Attack Risk",
-            "confidence": 0.87,
-            "important_features": ["cp", "oldpeak", "thalach"]
-        }
     """
     # Use model_dump for Pydantic v2 compatibility
     try:
-        # Coerce and validate inputs (accept strings for numeric fields)
-        raw = req.model_dump()
-        data = {}
-        errors = []
-        # Expected types and simple ranges
-        specs = {
-            'age': (int, 0, 120),
-            'sex': (int, 0, 1),
-            'cp': (int, 0, 4),
-            'trestbps': (float, 50, 300),
-            'chol': (float, 50, 1000),
-            'fbs': (int, 0, 1),
-            'thalach': (float, 30, 300),
-            'exang': (int, 0, 1),
-            'oldpeak': (float, 0.0, 10.0)
-        }
-
-        for k, (typ, lo, hi) in specs.items():
-            v = raw.get(k)
-            if v is None:
-                errors.append(f"{k} is required")
-                continue
-            # Coerce string numbers
-            try:
-                if isinstance(v, str):
-                    if typ is int:
-                        v2 = int(float(v))
-                    else:
-                        v2 = float(v)
-                else:
-                    v2 = typ(v)
-            except Exception:
-                errors.append(f"{k} must be {typ.__name__}")
-                continue
-
-            if v2 < lo or v2 > hi:
-                errors.append(f"{k} out of range [{lo},{hi}]")
-                continue
-
-            data[k] = v2
-
-        if errors:
-            raise HTTPException(status_code=422, detail={'errors': errors})
+        data = req.model_dump()
     except Exception:
         # Fallback for Pydantic v1
         data = req.dict()
@@ -437,32 +373,15 @@ def triage_heart(req: HeartTriageRequest, request: Request = None):
     pred, conf, matches, failed = try_heart_attack_triage(data)
 
     fallback = False
-    # Prepare placeholders
-    conditions = []
-    suggestion = None
-
     if failed or pred is None:
         # Fallback: use symptom-based rule triage by constructing a symptom string
         fallback = True
         symptom_text = f"age {data.get('age')} sex {data.get('sex')} cp {data.get('cp')} trestbps {data.get('trestbps')} chol {data.get('chol')} fbs {data.get('fbs')} thalach {data.get('thalach')} exang {data.get('exang')} oldpeak {data.get('oldpeak')}"
         risk, suggestion, conditions, score, matches_rule = classify_symptom(symptom_text)
-        # Map rule-based risk to simple labels for response
+        # Map rule-based risk to simple labels
         pred = 'Heart Attack Risk' if risk.lower().startswith('high') else 'Normal'
         conf = score or 0.0
         matches = matches_rule or []
-    else:
-        # Model produced a result: set a sensible suggestion and leave conditions empty
-        suggestion = "Visit ER immediately" if (isinstance(pred, str) and 'heart' in pred.lower()) else "No immediate action"
-        conditions = []
-
-    # Standardize a db-friendly risk label (one of 'low','medium','high')
-    try:
-        if fallback:
-            db_risk = (risk or 'low').lower()
-        else:
-            db_risk = 'high' if (isinstance(pred, str) and 'heart' in pred.lower()) else 'low'
-    except Exception:
-        db_risk = 'low'
 
     # Record session in DB if enabled (audit will indicate fallback when used)
     user_id = get_current_user_id(request) if request else None
@@ -471,19 +390,7 @@ def triage_heart(req: HeartTriageRequest, request: Request = None):
             _gen = get_db()
             db = next(_gen)
             try:
-                # Ensure predicted_conditions is JSON-serializable list and risk_level is standardized
-                preds_for_db = conditions if isinstance(conditions, (list, tuple)) else (matches if matches else [])
-                sess, _ = crud.create_session_with_audit(
-                    db,
-                    input_text=str(data),
-                    risk_level=db_risk,
-                    predicted_conditions=list(preds_for_db),
-                    next_step=(suggestion or ("Visit ER immediately" if pred == 'Heart Attack Risk' else "No immediate action")),
-                    confidence_score=float(conf or 0.0),
-                    endpoint="/triage_heart",
-                    fallback_to_rule=fallback,
-                    user_id=user_id,
-                )
+                sess, _ = crud.create_session_with_audit(db, input_text=str(data), risk_level=pred, predicted_conditions=conditions if not fallback else [], next_step=("Visit ER immediately" if pred == 'Heart Attack Risk' else "No immediate action"), confidence_score=conf, endpoint="/triage_heart", fallback_to_rule=fallback, user_id=user_id)
             finally:
                 try:
                     _gen.close()

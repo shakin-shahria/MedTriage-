@@ -178,9 +178,6 @@ Quick smoke test (from another terminal)
 - Test rule-based triage (curl):
   curl -s -X POST http://127.0.0.1:8000/triage -H "Content-Type: application/json" -d '{"symptom":"chest pain"}' | jq
 
-- Test heart-attack triage (curl):
-  curl -s -X POST http://127.0.0.1:8000/triage_heart -H "Content-Type: application/json" -d '{"age":63,"sex":1,"cp":3,"trestbps":145,"chol":233,"fbs":1,"thalach":150,"exang":0,"oldpeak":2.3}' | jq
-
 - Test admin endpoint (replace TOKEN with your admin token):
   curl -s -H "X-Admin-Token: TOKEN" http://127.0.0.1:8000/admin/sessions | jq
 
@@ -548,5 +545,5 @@ Done — mark next if you want me to start them for you here (I can run the back
 
 
 
-,,,...../////////
+
 cd /Users/shakin/Developer/medtriage && source ./venv/bin/activate && export MEDTRIAGE_DATABASE_URL='mysql+pymysql://medtriage_db:1234@127.0.0.1:3306/medtriage_db' && MEDTRIAGE_PRELOAD_ML=0 ./venv/bin/uvicorn main:app --reload --host 127.0.0.1 --port 8000 &

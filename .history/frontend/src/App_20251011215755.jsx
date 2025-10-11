@@ -216,6 +216,16 @@ function TriageApp() {
                 </motion.button>
                 
                 <motion.button
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.95 }}
+                  type="button"
+                  className="px-5 py-3 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-all duration-200"
+                  onClick={() => navigate('/heart')}
+                >
+                  ❤️ Heart Triage
+                </motion.button>
+
+                <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   type="button"
