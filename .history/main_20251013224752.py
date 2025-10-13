@@ -255,9 +255,6 @@ class HeartTriageResponse(BaseModel):
     prediction: str
     confidence: float
     important_features: Optional[list[str]] = None
-    suggestion: Optional[str] = None
-    inconclusive: Optional[bool] = False
-    rule_suggestion: Optional[str] = None
 
 
 def get_current_user_id(request: Request) -> Optional[int]:
@@ -453,11 +450,6 @@ def triage_heart(req: HeartTriageRequest, request: Request = None):
     except Exception:
         BAND_LOW, BAND_MED, ABSTAIN_LOW, ABSTAIN_HIGH = 0.10, 0.40, 0.45, 0.55
 
-    # keep copy of model outputs in case we fallback, so we can preserve model
-    # confidence and matches for transparency
-    model_confidence = conf
-    model_matches = matches
-
     if failed or pred is None:
         # Fallback: use symptom-based rule triage by constructing a symptom string
         fallback = True
@@ -465,37 +457,21 @@ def triage_heart(req: HeartTriageRequest, request: Request = None):
         risk, suggestion, conditions, score, matches_rule = classify_symptom(symptom_text)
         # Map rule-based risk to simple labels for response
         pred = 'Heart Attack Risk' if risk.lower().startswith('high') else 'Normal'
-        # prefer model's calibrated confidence when available; otherwise use rule score
-        conf = model_confidence if (model_confidence is not None) else (score if (score is not None) else 0.0)
-        # merge model matches and rule matches for transparency
-        matches = (model_matches or []) + (matches_rule or [])
+        conf = score or 0.0
+        matches = matches_rule or []
     else:
         # Model produced a result: conf is expected to be calibrated probability
         # If probability lies within the abstain window, treat as inconclusive
         if conf is None:
             fallback = True
         elif ABSTAIN_LOW <= conf <= ABSTAIN_HIGH:
-            # low-confidence region -> mark inconclusive but do not override model prediction
+            # low-confidence region -> fall back to rule-based
             fallback = True
-            inconclusive_flag = True
-            # compute rule-based suggestion for transparency but keep model pred/conf
             symptom_text = f"age {data.get('age')} sex {data.get('sex')} cp {data.get('cp')} trestbps {data.get('trestbps')} chol {data.get('chol')} fbs {data.get('fbs')} thalach {data.get('thalach')} exang {data.get('exang')} oldpeak {data.get('oldpeak')}"
-            rule_risk, rule_suggestion, rule_conditions, rule_score, matches_rule = classify_symptom(symptom_text)
-            # preserve model-derived pred (from earlier) by mapping conf -> band below
-            if conf < BAND_LOW:
-                pred = 'Normal'
-                suggestion = 'Self-care / Monitor'
-            elif conf < BAND_MED:
-                pred = 'Moderate Risk'
-                suggestion = 'Contact primary care or telehealth'
-            else:
-                pred = 'Heart Attack Risk'
-                suggestion = 'Visit ER immediately'
-            # preserve model confidence
-            conf = model_confidence if (model_confidence is not None) else (rule_score if (rule_score is not None) else 0.0)
-            matches = (model_matches or []) + (matches_rule or [])
-            # Attach rule suggestion for UI to show (but not override)
-            rule_suggestion = rule_suggestion
+            risk, suggestion, conditions, score, matches_rule = classify_symptom(symptom_text)
+            pred = 'Heart Attack Risk' if risk.lower().startswith('high') else 'Normal'
+            conf = score or 0.0
+            matches = matches_rule or []
         else:
             # Map calibrated probability to bands and suggestion
             if conf < BAND_LOW:
@@ -559,7 +535,7 @@ def triage_heart(req: HeartTriageRequest, request: Request = None):
     except Exception:
         important = []
 
-    return HeartTriageResponse(prediction=pred, confidence=float(conf), important_features=important, suggestion=(suggestion or None))
+    return HeartTriageResponse(prediction=pred, confidence=float(conf), important_features=important)
 
 
 @app.post("/auth/register")

@@ -15,7 +15,6 @@ import numpy as np
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
 from sklearn.isotonic import IsotonicRegression
-from sklearn.calibration import CalibratedClassifierCV
 
 ROOT = Path(__file__).resolve().parents[1]
 MODEL_PATH = ROOT / "models" / "heart_attack_model.pkl"
@@ -123,30 +122,18 @@ def predict_heart_attack(data: dict):
     pred = model.predict(df)
     raw_confidence = float(probs[0])
 
-    # If the loaded model is already a calibrated classifier, its predict_proba
-    # output should be treated as calibrated. Avoid applying an external
-    # calibrator in that case (prevents double-calibration which can distort
-    # probabilities).
+    # Apply calibrator if available
     try:
-        is_model_calibrated = isinstance(model, CalibratedClassifierCV) or hasattr(model, 'calibrated_classifiers_')
-    except Exception:
-        is_model_calibrated = False
-
-    # Apply external calibrator only when model is not already calibrated
-    try:
-        if is_model_calibrated:
-            confidence = raw_confidence
-        else:
-            calib = _load_or_fit_calibrator()
-            if calib is not None:
-                # If calibrator is an sklearn classifier (e.g., LogisticRegression), use predict_proba
-                if hasattr(calib, 'predict_proba'):
-                    confidence = float(max(0.0, min(1.0, float(calib.predict_proba([[raw_confidence]])[0, 1]))))
-                else:
-                    # isotonic or similar: use predict which returns calibrated prob
-                    confidence = float(max(0.0, min(1.0, float(calib.predict([raw_confidence])[0]))))
+        calib = _load_or_fit_calibrator()
+        if calib is not None:
+            # If calibrator is an sklearn classifier (e.g., LogisticRegression), use predict_proba
+            if hasattr(calib, 'predict_proba'):
+                confidence = float(max(0.0, min(1.0, float(calib.predict_proba([[raw_confidence]])[0, 1]))))
             else:
-                confidence = raw_confidence
+                # isotonic or similar: use predict which returns calibrated prob
+                confidence = float(max(0.0, min(1.0, float(calib.predict([raw_confidence])[0]))))
+        else:
+            confidence = raw_confidence
     except Exception:
         confidence = raw_confidence
     label = 'Heart Attack Risk' if int(pred[0]) == 1 else 'Normal'
