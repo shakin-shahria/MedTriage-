@@ -318,16 +318,15 @@ export default function HeartTriage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Exercise Induced Angina</label>
-                    <CustomSelect
+                    <select
                       name="exang"
                       value={form.exang}
                       onChange={handleChange}
-                      options={[
-                        { value: '0', label: 'No' },
-                        { value: '1', label: 'Yes' }
-                      ]}
-                      placeholder="Select exercise angina"
-                    />
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                    >
+                      <option value="0">No</option>
+                      <option value="1">Yes</option>
+                    </select>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">ST Depression</label>

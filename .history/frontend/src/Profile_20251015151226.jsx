@@ -93,10 +93,10 @@ export default function Profile() {
   if (error) return <div className="min-h-screen flex items-center justify-center text-red-600">{error}</div>
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
-      <div className="w-full px-0">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 pb-12">
+  <div className="max-w-6xl mx-auto px-4">
         {/* Top navbar */}
-        <nav className="flex items-center justify-between py-3 px-4 mb-6 rounded-lg bg-gradient-to-r from-indigo-600 via-fuchsia-500 to-orange-400 shadow-md text-white">
+  <nav className="flex items-center justify-between py-3 px-2 mb-4 rounded-none bg-gradient-to-r from-indigo-600 via-fuchsia-500 to-orange-400 shadow-md text-white">
           <div className="flex items-center space-x-3">
             <div className="h-10 w-10 rounded-full bg-white/20 flex items-center justify-center text-white font-bold ring-2 ring-white/30">MT</div>
             <div className="text-lg font-semibold">MedTriage</div>
@@ -140,12 +140,12 @@ export default function Profile() {
                 >
                   Logout
                 </button>
-                {/* <button
-                  onClick={() => navigate('/')}
-                  className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
+                <button
+                  onClick={() => navigate('/heart')}
+                  className="w-full px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700"
                 >
-                  New Assessment
-                </button> */}
+                  ❤️ Heart Triage
+                </button>
               </div>
             </div>
 

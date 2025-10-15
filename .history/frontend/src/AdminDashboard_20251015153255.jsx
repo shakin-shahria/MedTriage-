@@ -58,19 +58,6 @@ export default function AdminDashboard(){
     }
   }
 
-  async function fetchProfile(){
-    try{
-      const token = localStorage.getItem('token')
-      if(!token) return
-      const res = await fetch('http://127.0.0.1:8000/auth/profile', { headers: { 'Authorization': `Bearer ${token}` } })
-      if(!res.ok) return
-      const p = await res.json()
-      setAdminProfile(p)
-    }catch(e){
-      // ignore
-    }
-  }
-
   async function fetchSessions(){
     setLoading(true); setError(null)
     try{

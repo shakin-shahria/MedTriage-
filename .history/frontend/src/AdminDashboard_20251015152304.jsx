@@ -18,7 +18,6 @@ export default function AdminDashboard(){
 
   useEffect(() => {
     fetchSessions()
-    fetchUsers()
     fetchProfile()
     // load a small audit log placeholder
     setAuditLogs([{
@@ -36,27 +35,6 @@ export default function AdminDashboard(){
     const last = auditLogs.length ? auditLogs.reduce((a,b) => (new Date(a.time) > new Date(b.time) ? a : b)).time : null
     return { total, exports, uniqueActors: actors.size, last }
   }, [auditLogs])
-
-  async function fetchUsers(){
-    try{
-      const headers = {}
-      const token = (typeof window !== 'undefined' && localStorage.getItem(STORAGE_KEY))
-      if(token){
-        if(token.startsWith('Bearer ')) headers['Authorization'] = token
-        else headers['X-Admin-Token'] = token
-      }
-
-      const res = await fetch('http://127.0.0.1:8000/admin/users', { headers })
-      if(!res.ok) return
-      const body = await res.json()
-      const totalUsers = body.total || 0
-      
-      // Update analytics with total users
-      setAnalytics(prev => ({ ...prev, totalUsers }))
-    }catch(e){
-      // ignore errors, will fall back to session-based calculation
-    }
-  }
 
   async function fetchProfile(){
     try{
@@ -109,13 +87,16 @@ export default function AdminDashboard(){
       const highs = (Array.isArray(body) ? body.filter(s => String(s.risk_level).toLowerCase() === 'high').length : (body.items ? body.items.filter(s=>String(s.risk_level).toLowerCase()==='high').length : 0))
       const avgConf = (Array.isArray(body) ? (body.reduce((acc,s)=>acc + (s.confidence_score||0),0) / Math.max(1, body.length)) : (body.items ? (body.items.reduce((acc,s)=>acc + (s.confidence_score||0),0) / Math.max(1, body.items.length)) : 0))
       
-      // Update analytics (totalUsers is set by fetchUsers)
-      setAnalytics(prev => ({ 
-        ...prev, 
-        totalSessions, 
-        highRisk: highs, 
-        avgConfidence: avgConf ? Number(avgConf.toFixed(2)) : 0 
-      }))
+      // Calculate unique users from sessions
+      const sessionData = Array.isArray(body) ? body : (body.items || [])
+      const uniqueUsers = new Set()
+      sessionData.forEach(s => {
+        const userId = s.user_id || s.user?.id || s.user_email || s.user?.email || s.username || s.user?.username
+        if (userId) uniqueUsers.add(userId)
+      })
+      const totalUsers = uniqueUsers.size
+      
+      setAnalytics({ totalUsers, totalSessions, highRisk: highs, avgConfidence: avgConf ? Number(avgConf.toFixed(2)) : 0 })
 
     }catch(e){
       setError(e.message)

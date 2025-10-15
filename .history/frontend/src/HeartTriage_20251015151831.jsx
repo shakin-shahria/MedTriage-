@@ -252,18 +252,17 @@ export default function HeartTriage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Chest Pain Type</label>
-                  <CustomSelect
+                  <select
                     name="cp"
                     value={form.cp}
                     onChange={handleChange}
-                    options={[
-                      { value: '1', label: 'Typical angina' },
-                      { value: '2', label: 'Atypical angina' },
-                      { value: '3', label: 'Non-anginal pain' },
-                      { value: '4', label: 'Asymptomatic' }
-                    ]}
-                    placeholder="Select chest pain type"
-                  />
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                  >
+                    <option value="1">Typical angina</option>
+                    <option value="2">Atypical angina</option>
+                    <option value="3">Non-anginal pain</option>
+                    <option value="4">Asymptomatic</option>
+                  </select>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -292,16 +291,15 @@ export default function HeartTriage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Fasting Blood Sugar &gt; 120 mg/dL</label>
-                    <CustomSelect
+                    <select
                       name="fbs"
                       value={form.fbs}
                       onChange={handleChange}
-                      options={[
-                        { value: '0', label: 'No' },
-                        { value: '1', label: 'Yes' }
-                      ]}
-                      placeholder="Select blood sugar level"
-                    />
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                    >
+                      <option value="0">No</option>
+                      <option value="1">Yes</option>
+                    </select>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Maximum Heart Rate</label>
@@ -318,16 +316,15 @@ export default function HeartTriage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Exercise Induced Angina</label>
-                    <CustomSelect
+                    <select
                       name="exang"
                       value={form.exang}
                       onChange={handleChange}
-                      options={[
-                        { value: '0', label: 'No' },
-                        { value: '1', label: 'Yes' }
-                      ]}
-                      placeholder="Select exercise angina"
-                    />
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                    >
+                      <option value="0">No</option>
+                      <option value="1">Yes</option>
+                    </select>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">ST Depression</label>
