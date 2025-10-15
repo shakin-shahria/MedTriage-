@@ -101,40 +101,53 @@ export default function Login() {
       <div className="min-h-screen flex items-center justify-center py-12 px-4 bg-transparent relative overflow-hidden">
 
       <div className="relative z-10 max-w-4xl w-full bg-white rounded-2xl shadow-2xl overflow-hidden grid grid-cols-1 md:grid-cols-2">
-        {/* Left: Professional brand panel (replaces cartoon SVG) */}
-        <div className="bg-white p-8 flex flex-col items-start justify-center space-y-6 border-r border-gray-100">
-          <div className="flex items-center space-x-3">
-            {/* Simple logo mark */}
-            <div className="w-12 h-12 flex items-center justify-center rounded-md bg-indigo-600 text-white font-bold text-lg">MT</div>
-            <div>
-              <h2 className="text-xl font-semibold text-gray-800">MedTriage</h2>
-              <p className="text-sm text-gray-500">Secure clinical triage platform</p>
-            </div>
-          </div>
+        {/* Left: Cartoon illustration panel */}
+        <div className="bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center rounded-l-2xl overflow-hidden">
+          <svg viewBox="0 0 400 600" className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="bgGrad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#dbeafe" />
+                <stop offset="100%" stopColor="#e0e7ff" />
+              </linearGradient>
+            </defs>
+            <rect width="400" height="600" fill="url(#bgGrad)" />
 
-          <div className="w-full max-w-xs">
-            <h3 className="text-2xl font-semibold text-gray-800">Welcome back</h3>
-            <p className="mt-2 text-sm text-gray-600">Sign in to access patient triage, clinical decision support, and secure records.</p>
+            {/* Cartoon Doctor */}
+            <g transform="translate(150,150)">
+              <circle cx="50" cy="40" r="35" fill="#fbbf24" stroke="#f59e0b" strokeWidth="2" />
+              <circle cx="45" cy="35" r="3" fill="#000" />
+              <circle cx="55" cy="35" r="3" fill="#000" />
+              <path d="M50 45 Q45 50 50 55 Q55 50 50 45" fill="#000" />
+              <rect x="35" y="55" width="30" height="45" fill="#3b82f6" rx="5" />
+              <rect x="25" y="55" width="10" height="25" fill="#1f2937" rx="2" />
+              <rect x="65" y="55" width="10" height="25" fill="#1f2937" rx="2" />
+              <rect x="40" y="100" width="20" height="30" fill="#10b981" rx="2" />
+            </g>
 
-            <ul className="mt-6 space-y-3 text-sm text-gray-600">
-              <li className="flex items-start">
-                <span className="mr-3 text-indigo-600 mt-0.5">•</span>
-                <span>HIPAA-minded access controls</span>
-              </li>
-              <li className="flex items-start">
-                <span className="mr-3 text-indigo-600 mt-0.5">•</span>
-                <span>Encrypted sessions</span>
-              </li>
-              <li className="flex items-start">
-                <span className="mr-3 text-indigo-600 mt-0.5">•</span>
-                <span>Audit-ready logs</span>
-              </li>
-            </ul>
-          </div>
+            {/* Stethoscope */}
+            <g transform="translate(100,200)">
+              <circle cx="50" cy="50" r="8" fill="#ef4444" />
+              <line x1="50" y1="58" x2="50" y2="80" stroke="#ef4444" strokeWidth="3" strokeLinecap="round" />
+              <line x1="42" y1="65" x2="58" y2="65" stroke="#ef4444" strokeWidth="3" strokeLinecap="round" />
+              <circle cx="30" cy="65" r="5" fill="#ef4444" />
+              <circle cx="70" cy="65" r="5" fill="#ef4444" />
+            </g>
 
-          <div className="mt-4 text-xs text-gray-400">
-            <p>For organization sign-in, use your institution credentials. Need help? Contact <a href="mailto:support@medtriage.example" className="text-indigo-600">support</a>.</p>
-          </div>
+            {/* ECG Waveform */}
+            <g transform="translate(50,350)" stroke="#10b981" strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M0 0 L40 0 L50 -15 L60 25 L70 -25 L90 0 L130 0 L140 -10 L150 8 L160 -30 L180 0 L220 0 L240 -20 L260 15 L280 -10 L300 0 L340 0" />
+            </g>
+
+            {/* Heart Icon */}
+            <g transform="translate(300,400)">
+              <path d="M10 20 C10 15, 5 10, 0 15 C-5 10, -10 15, -10 20 C-10 25, -5 30, 0 25 C5 30, 10 25, 10 20 Z" fill="#ef4444" />
+            </g>
+
+            {/* Welcome Text */}
+            <text x="200" y="480" fontFamily="Arial, sans-serif" fontSize="20" fontWeight="bold" fill="#1f2937" textAnchor="middle">Welcome to MedTriage</text>
+            <text x="200" y="505" fontFamily="Arial, sans-serif" fontSize="14" fill="#6b7280" textAnchor="middle">AI-Powered Medical Triage</text>
+            <text x="200" y="525" fontFamily="Arial, sans-serif" fontSize="12" fill="#9ca3af" textAnchor="middle">Secure • Fast • Reliable</text>
+          </svg>
         </div>
 
         {/* Right: Form */}

@@ -10,6 +10,60 @@ export default function HeartTriage() {
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+
+  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value })
+
+  const submit = async (e) => {
+    if (e) e.preventDefault()
+    setLoading(true)
+    setResult(null)
+    setError(null)
+
+    try {
+      const headers = { 'Content-Type': 'application/json' }
+      try {
+        const token = localStorage.getItem('token')
+        if (token) headers['Authorization'] = `Bearer ${token}`
+      } catch (err) {
+        // ignore localStorage access errors
+      }
+
+      const res = await fetch('http://127.0.0.1:8000/triage_heart', {
+        method: 'POST', headers, body: JSON.stringify(form),
+      })
+
+      if (!res.ok) {
+        const text = await res.text().catch(() => '')
+        throw new Error(text || `status ${res.status}`)
+      }
+
+      const data = await res.json()
+      setResult(data)
+    } catch (err) {
+      setError(err.message || String(err))
+    } finally { setLoading(false) }
+  }
+
+  const applyPreset = (preset) => setForm({ ...preset })
+
+  const reset = () => { setForm(DEFAULT); setResult(null); setError(null) }
+
+  const prettyPercent = (v) => `${Math.round((v || 0) * 100)}%`
+
+  const getRiskColor = (confidence) => {
+    if (confidence > 0.6) return 'text-red-600 bg-red-100'
+    if (confidence > 0.35) return 'text-yellow-600 bg-yellow-100'
+    return 'text-green-600 bg-green-100'
+  }
+
+  const getRiskIcon = (confidence) => {
+    if (confidence > 0.6) return '🔴'
+    if (confidence > 0.35) return '🟡'
+    return '🟢'
+  }
+  const [result, setResult] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
   const [toast, setToast] = useState(null)
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value })
@@ -64,13 +118,13 @@ export default function HeartTriage() {
 
   const getRiskIcon = (confidence) => {
     if (confidence > 0.6) return '🔴'
-    if (confidence > 0.35) return '��'
+    if (confidence > 0.35) return '🟡'
     return '🟢'
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
-      <div className="max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-2">
+      <div className="max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
 
         {/* Toast */}
         {toast && (
@@ -82,11 +136,11 @@ export default function HeartTriage() {
         )}
 
         <div className="w-full">
-          <div className="flex justify-end mb-1">
+          <div className="flex justify-end mb-4 mt-3">
             <div className="flex gap-3">
               <button
                 onClick={() => navigate('/profile')}
-                className="px-3 py-1 text-sm bg-indigo-600 text-white rounded-lg shadow hover:bg-indigo-700"
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg shadow hover:bg-indigo-700"
               >
                 ← Back to Profile
               </button>
@@ -97,28 +151,28 @@ export default function HeartTriage() {
             initial={{ opacity: 0, y: -30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: "easeOut" }}
-            className="text-center mb-2"
+            className="text-center mb-12"
           >
-            <h1 className="text-3xl md:text-4xl font-bold text-gray-800 mb-2">
+            <h1 className="text-4xl md:text-5xl font-bold text-gray-800 mb-4">
               Heart Risk Assessment
-              <span className="block text-lg md:text-xl font-normal text-gray-600">AI-Powered Cardiovascular Evaluation</span>
+              <span className="block text-xl md:text-2xl font-normal text-gray-600">AI-Powered Cardiovascular Evaluation</span>
             </h1>
-            <p className="text-base text-gray-600 max-w-2xl mx-auto">
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
               Advanced machine learning analysis of cardiac risk factors with evidence-based predictions.
             </p>
           </motion.div>
 
-          <div className="grid lg:grid-cols-2 gap-6">
+          <div className="grid lg:grid-cols-2 gap-8">
             {/* Form Section */}
             <motion.div
               initial={{ opacity: 0, x: -50 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
-              className="bg-white rounded-xl shadow-xl p-6"
+              className="bg-white rounded-xl shadow-xl p-8"
             >
-              <h2 className="text-xl font-semibold mb-4 text-gray-800">Patient Parameters</h2>
+              <h2 className="text-2xl font-semibold mb-6 text-gray-800">Patient Parameters</h2>
 
-              <div className="flex items-center gap-2 mb-4">
+              <div className="flex items-center gap-2 mb-6">
                 <span className="text-sm text-gray-600">Quick presets:</span>
                 <motion.button
                   whileHover={{ scale: 1.05 }}
@@ -149,7 +203,7 @@ export default function HeartTriage() {
                 </motion.button>
               </div>
 
-              <form onSubmit={submit} className="space-y-4">
+              <form onSubmit={submit} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Age</label>
@@ -305,7 +359,7 @@ export default function HeartTriage() {
             </motion.div>
 
             {/* Results Section */}
-            <div className="space-y-4">
+            <div className="space-y-6">
               {error && (
                 <motion.div
                   initial={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -324,7 +378,7 @@ export default function HeartTriage() {
                   initial={{ opacity: 0, y: 30, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   transition={{ duration: 0.6, delay: 0.3, type: "spring", stiffness: 100 }}
-                  className="bg-white rounded-xl shadow-xl p-6"
+                  className="bg-white rounded-xl shadow-xl p-8"
                 >
                   <motion.div
                     initial={{ scale: 0 }}
@@ -336,7 +390,7 @@ export default function HeartTriage() {
                     <h2 className="text-2xl font-bold text-gray-800 mt-2">Assessment Complete</h2>
                   </motion.div>
 
-                  <div className="space-y-4">
+                  <div className="space-y-6">
                     <motion.div
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -395,7 +449,7 @@ export default function HeartTriage() {
                               key={i}
                               initial={{ opacity: 0, x: -20 }}
                               animate={{ opacity: 1, x: 0 }}
-                              transition={{ delay: 1.1 + 0.1 * i, type: "spring", stiffness: 100 }}
+                              transition={{ delay: 1.1 + 0.1 * index, type: "spring", stiffness: 100 }}
                               className="flex items-center justify-between text-gray-900"
                             >
                               <span className="flex items-center gap-2">
@@ -443,7 +497,7 @@ export default function HeartTriage() {
                   initial={{ opacity: 0, y: 30 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.4 }}
-                  className="bg-white rounded-xl shadow-xl p-6 text-center"
+                  className="bg-white rounded-xl shadow-xl p-8 text-center"
                 >
                   <div className="text-6xl mb-4">❤️</div>
                   <h3 className="text-xl font-semibold text-gray-800 mb-2">Ready for Heart Assessment</h3>
@@ -455,10 +509,10 @@ export default function HeartTriage() {
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.5 }}
-                className="bg-white rounded-xl shadow-xl p-4"
+                className="bg-white rounded-xl shadow-xl p-6"
               >
-                <h3 className="text-base font-semibold text-gray-800 mb-2">About This Assessment</h3>
-                <p className="text-sm text-gray-600 mb-3">
+                <h3 className="text-lg font-semibold text-gray-800 mb-3">About This Assessment</h3>
+                <p className="text-sm text-gray-600 mb-4">
                   This tool uses advanced machine learning to analyze traditional cardiac risk factors and provide evidence-based predictions.
                   Results should be interpreted by qualified healthcare professionals and used as part of comprehensive patient evaluation.
                 </p>
@@ -474,4 +528,5 @@ export default function HeartTriage() {
       </div>
     </div>
   )
+}
 }

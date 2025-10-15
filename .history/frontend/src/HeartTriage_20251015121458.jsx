@@ -324,7 +324,7 @@ export default function HeartTriage() {
                   initial={{ opacity: 0, y: 30, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   transition={{ duration: 0.6, delay: 0.3, type: "spring", stiffness: 100 }}
-                  className="bg-white rounded-xl shadow-xl p-6"
+                  className="bg-white rounded-xl shadow-xl p-8"
                 >
                   <motion.div
                     initial={{ scale: 0 }}
@@ -443,7 +443,7 @@ export default function HeartTriage() {
                   initial={{ opacity: 0, y: 30 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.4 }}
-                  className="bg-white rounded-xl shadow-xl p-6 text-center"
+                  className="bg-white rounded-xl shadow-xl p-8 text-center"
                 >
                   <div className="text-6xl mb-4">❤️</div>
                   <h3 className="text-xl font-semibold text-gray-800 mb-2">Ready for Heart Assessment</h3>

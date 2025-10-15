@@ -1,8 +1,8 @@
 import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 
-export default function Register() {
-  const [form, setForm] = useState({ username: '', email: '', password: '' })
+export default function Login() {
+  const [form, setForm] = useState({ username_or_email: '', password: '' })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const navigate = useNavigate()
@@ -16,14 +16,36 @@ export default function Register() {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch('http://127.0.0.1:8000/auth/register', {
+      const res = await fetch('http://127.0.0.1:8000/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       })
-      if (!res.ok) throw new Error(`Registration failed: ${res.status}`)
-      await res.json()
-      navigate('/login')
+      if (!res.ok) throw new Error(`Login failed: ${res.status}`)
+      const data = await res.json()
+      localStorage.setItem('token', data.access_token)
+      // Notify other components that auth state changed
+      window.dispatchEvent(new Event('auth-change'))
+      // After storing the token, probe the profile endpoint to detect the
+      // user's role so admins can be sent straight to the Admin dashboard.
+      try {
+        const profileRes = await fetch('http://127.0.0.1:8000/auth/profile', {
+          headers: { 'Authorization': `Bearer ${data.access_token}` },
+        })
+        if (profileRes.ok) {
+          const profile = await profileRes.json()
+          if (profile.role === 'admin') {
+              // Persist admin token for Admin UI convenience and replace history so back doesn't go to login
+              try { localStorage.setItem('medtriage_admin_token', `Bearer ${data.access_token}`) } catch (e) {}
+              navigate('/admin-dashboard', { replace: true })
+            return
+          }
+        }
+      } catch (e) {
+        // ignore profile fetch errors and fall back to profile page
+      }
+
+      navigate('/profile')
     } catch (err) {
       setError(err.message)
     } finally {
@@ -91,8 +113,8 @@ export default function Register() {
           </div>
 
           <div className="w-full max-w-xs">
-            <h3 className="text-2xl font-semibold text-gray-800">Join MedTriage</h3>
-            <p className="mt-2 text-sm text-gray-600">Create your account to access patient triage, clinical decision support, and secure records.</p>
+            <h3 className="text-2xl font-semibold text-gray-800">Welcome back</h3>
+            <p className="mt-2 text-sm text-gray-600">Sign in to access patient triage, clinical decision support, and secure records.</p>
 
             <ul className="mt-6 space-y-3 text-sm text-gray-600">
               <li className="flex items-start">
@@ -118,28 +140,16 @@ export default function Register() {
         {/* Right: Form */}
         <div className="p-8 flex items-center justify-center">
           <div className="w-full max-w-md">
-            <h1 className="text-3xl font-bold text-gray-800 mb-4">Create your account</h1>
+            <h1 className="text-3xl font-bold text-gray-800 mb-4">Sign in to MedTriage</h1>
             <p className="text-sm text-gray-500 mb-6">Fast. Secure. Professional.</p>
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
-                <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">Username</label>
+                <label htmlFor="username_or_email" className="block text-sm font-medium text-gray-700 mb-2">Username or Email</label>
                 <input
-                  id="username"
+                  id="username_or_email"
                   type="text"
-                  name="username"
-                  value={form.username}
-                  onChange={handleChange}
-                  className="w-full p-3 border border-gray-200 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-400 focus:border-transparent"
-                  required
-                />
-              </div>
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">Email</label>
-                <input
-                  id="email"
-                  type="email"
-                  name="email"
-                  value={form.email}
+                  name="username_or_email"
+                  value={form.username_or_email}
                   onChange={handleChange}
                   className="w-full p-3 border border-gray-200 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-400 focus:border-transparent"
                   required
@@ -163,18 +173,18 @@ export default function Register() {
                 disabled={loading}
                 className="w-full px-6 py-3 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50 transition-colors"
               >
-                {loading ? 'Creating account...' : 'Create account'}
+                {loading ? 'Logging in...' : 'Login'}
               </button>
 
-              <div className="flex items-center justify-center text-sm text-gray-500">
-                <a href="/login" className="text-indigo-600 hover:underline">Already have an account? Sign in</a>
+              <div className="flex items-center justify-between text-sm text-gray-500">
+                <Link to="/register" className="text-indigo-600 hover:underline">Create account</Link>
+                <a href="#" className="hover:underline">Forgot password?</a>
               </div>
             </form>
-            <p className="mt-6 text-xs text-gray-400">By creating an account you agree to our terms and privacy policy.</p>
+            <p className="mt-6 text-xs text-gray-400">By signing in you agree to our terms and privacy policy.</p>
           </div>
         </div>
       </div>
-    </div>
     </>
   )
 }

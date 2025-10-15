@@ -305,7 +305,7 @@ export default function HeartTriage() {
             </motion.div>
 
             {/* Results Section */}
-            <div className="space-y-4">
+            <div className="space-y-6">
               {error && (
                 <motion.div
                   initial={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -324,7 +324,7 @@ export default function HeartTriage() {
                   initial={{ opacity: 0, y: 30, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   transition={{ duration: 0.6, delay: 0.3, type: "spring", stiffness: 100 }}
-                  className="bg-white rounded-xl shadow-xl p-6"
+                  className="bg-white rounded-xl shadow-xl p-8"
                 >
                   <motion.div
                     initial={{ scale: 0 }}
@@ -336,7 +336,7 @@ export default function HeartTriage() {
                     <h2 className="text-2xl font-bold text-gray-800 mt-2">Assessment Complete</h2>
                   </motion.div>
 
-                  <div className="space-y-4">
+                  <div className="space-y-6">
                     <motion.div
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -443,7 +443,7 @@ export default function HeartTriage() {
                   initial={{ opacity: 0, y: 30 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.4 }}
-                  className="bg-white rounded-xl shadow-xl p-6 text-center"
+                  className="bg-white rounded-xl shadow-xl p-8 text-center"
                 >
                   <div className="text-6xl mb-4">❤️</div>
                   <h3 className="text-xl font-semibold text-gray-800 mb-2">Ready for Heart Assessment</h3>
