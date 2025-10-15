@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="900" viewBox="0 0 1400 900">
+  <style>
+    .title { font: bold 20px sans-serif; }
+    .subtitle { font: 12px sans-serif; fill: #555 }
+    .box { fill: #fff; stroke: #2b2b2b; stroke-width: 1.6; rx:10; }
+    .box-title { font: 14px sans-serif; font-weight: 700; fill: #111 }
+    .box-text { font: 12px sans-serif; fill: #222 }
+    .cloud { fill: #f8fafc; stroke: #94a3b8; stroke-width:1.2; rx:14 }
+    .arrow { stroke: #374151; stroke-width:1.6; fill:none; marker-end: url(#arrowhead); }
+    .note { font: 11px sans-serif; fill:#444 }
+  </style>
+
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#374151" />
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="20" y="36" class="title">Heart Disease Classifier — Simple Flow</text>
+  <text x="20" y="56" class="subtitle">RandomForest pipeline + post-hoc calibration, rule-based fallback for safety</text>
+
+  <!-- Data cloud -->
+  <rect x="20" y="90" width="260" height="64" rx="14" class="cloud" />
+  <text x="38" y="116" class="box-title">Data Sources</text>
+  <text x="38" y="134" class="box-text">UCI Heart CSV (heart.csv) · ~303 rows</text>
+  <text x="38" y="150" class="box-text">target = 'target' (1 = disease)</text>
+
+  <!-- Preprocessing box -->
+  <rect x="320" y="90" width="360" height="200" class="box"/>
+  <text x="340" y="116" class="box-title">Preprocessing Pipeline</text>
+  <text x="340" y="136" class="box-text">Numeric: impute (median) → StandardScaler</text>
+  <text x="340" y="155" class="box-text">Categorical: impute (mode) → OneHotEncoder(handle_unknown='ignore')</text>
+  <text x="340" y="174" class="box-text">Numeric cols: age, trestbps, chol, thalach, oldpeak</text>
+  <text x="340" y="192" class="box-text">Categorical cols: sex, cp, fbs, exang</text>
+  <text x="340" y="210" class="box-text">ColumnTransformer → fixed feature matrix</text>
+
+  <!-- Model & training box -->
+  <rect x="720" y="90" width="360" height="180" class="box"/>
+  <text x="740" y="116" class="box-title">Model & Training</text>
+  <text x="740" y="136" class="box-text">Pipeline: ColumnTransformer + RandomForestClassifier</text>
+  <text x="740" y="152" class="box-text">Hyperparam tuning: RandomizedSearchCV (n_iter=20, cv=5)</text>
+  <text x="740" y="168" class="box-text">Train/test: stratified 80/20 (random_state=42)</text>
+  <text x="740" y="184" class="box-text">Save: models/heart_attack_model.pkl</text>
+
+  <!-- arrows from data -> preprocess -> model -->
+  <path d="M280 122 L320 122" class="arrow" />
+  <path d="M680 150 L720 150" class="arrow" />
+
+  <!-- Calibration box -->
+  <rect x="320" y="310" width="360" height="120" class="box"/>
+  <text x="340" y="336" class="box-title">Probability Calibration (post-hoc)</text>
+  <text x="340" y="356" class="box-text">Held-out calibration fold (~20%)</text>
+  <text x="340" y="374" class="box-text">Platt-scaling (LogisticRegression) on raw model probs</text>
+  <text x="340" y="392" class="box-text">Persist: heart_attack_calibrator.pkl</text>
+  <text x="340" y="408" class="note">Use only if model not already calibrated</text>
+
+  <!-- Decision box -->
+  <rect x="720" y="310" width="360" height="220" class="box"/>
+  <text x="740" y="336" class="box-title">Inference & Decision Logic</text>
+  <text x="740" y="356" class="box-text">1) model.predict_proba → raw_prob</text>
+  <text x="740" y="374" class="box-text">2) If model calibrated → confidence = raw_prob</text>
+  <text x="740" y="392" class="box-text">3) Else if calibrator → confidence = calibrator(raw_prob)</text>
+  <text x="740" y="410" class="box-text">4) Map confidence → bands (Low / Medium / High)</text>
+  <text x="740" y="430" class="box-text">5) If confidence ∈ abstain_window (e.g. 0.45–0.55) → inconclusive + rule suggestion</text>
+  <text x="740" y="448" class="box-text">6) Return prediction, confidence, top_features, suggestion, fallback_to_rule</text>
+
+  <!-- arrows: model -> calibrator -> decision -->
+  <path d="M900 270 L900 310" class="arrow" />
+  <path d="M680 370 L720 370" class="arrow" />
+
+  <!-- Explainability box -->
+  <rect x="1120" y="90" width="240" height="120" class="box"/>
+  <text x="1140" y="116" class="box-title">Explainability</text>
+  <text x="1140" y="136" class="box-text">preproc.get_feature_names_out()</text>
+  <text x="1140" y="154" class="box-text">RandomForest feature_importances_ → top-k</text>
+  <text x="1140" y="172" class="note">Save feature list in report</text>
+
+  <!-- API & Audit box -->
+  <rect x="720" y="560" width="640" height="120" class="box"/>
+  <text x="740" y="584" class="box-title">API Endpoint & Audit</text>
+  <text x="740" y="604" class="box-text">POST /triage_heart — accepts 9 fields</text>
+  <text x="740" y="622" class="box-text">Response: {prediction, confidence, important_features, suggestion, inconclusive, session_id}</text>
+  <text x="740" y="640" class="box-text">Log session + audit_log (fallback_to_rule flag)</text>
+
+  <!-- Metrics box -->
+  <rect x="20" y="560" width="260" height="120" class="box"/>
+  <text x="40" y="592" class="box-title">Metrics & Monitoring</text>
+  <text x="40" y="612" class="box-text">Model: ROC-AUC, F1, precision, recall</text>
+  <text x="40" y="632" class="box-text">Operational: fallback rate, avg confidence, latency</text>
+  <text x="40" y="650" class="note">Track logs & drift (triage_heart.log)</text>
+
+  <!-- Robustness box -->
+  <rect x="20" y="730" width="260" height="120" class="box"/>
+  <text x="40" y="760" class="box-title">Robustness & Safety</text>
+  <text x="40" y="780" class="box-text">Input validation & range checks</text>
+  <text x="40" y="798" class="box-text">Fallback to deterministic rule-based triage if model unavailable</text>
+
+  <!-- small icons / notes -->
+  <text x="320" y="268" class="note">Calibration step (optional)</text>
+  <text x="980" y="100" class="note">Explainability helps clinicians understand drivers</text>
+
+  <!-- final arrows from decision -> API -->
+  <path d="M900 530 L900 560" class="arrow" />
+  <path d="M440 430 L440 560" class="arrow" />
+
+</svg>
