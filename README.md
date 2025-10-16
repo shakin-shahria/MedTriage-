@@ -1,82 +1,193 @@
-<<<<<<< HEAD
-# MedTriage - AI-powered Symptom Checker (MVP)
+# 🩺 MedTriage — Intelligent Symptom & Heart-Risk Assessment System
 
-This is a minimal demo of a symptom triage API built with FastAPI. It implements simple rule-based logic for the MVP and is ready to be extended with an ML model.
+**MedTriage** is an AI-powered triage platform built with **FastAPI + React** that combines a rule-based engine with a trained **RandomForest heart-risk model**.  
+It provides interpretable, auditable, and calibrated triage guidance for early heart disease risk assessment and clinical decision support.
 
-## Setup (Mac)
+---
 
-1. Create and activate a virtual environment (macOS / zsh):
-# MedTriage - AI-powered Symptom Checker (MVP)
+## 🎥 Demo Video
 
-MedTriage is a minimal demo of a symptom triage API built with FastAPI. It provides simple rule-based triage logic as an MVP and includes an optional ML endpoint that falls back to rules if the model is unavailable.
+>[Uploading recording (2).webm…]()
 
-## Setup (macOS / zsh)
 
-1. Create and activate a virtual environment:
 
-   python3 -m venv venv
-   source venv/bin/activate
+---
 
-2. Install dependencies:
+## ⚡ Overview
 
-   pip install -r requirements.txt
+Users enter symptoms or clinical values (age, chest pain type, blood pressure, cholesterol, etc.).  
+The FastAPI backend returns:
+- **Risk label** (`Normal` / `Disease`)
+- **Calibrated probability**
+- **Top contributing features**
+- **Recommended next step**
 
-3. Run the server (development):
+Every request is logged for **auditability**, and low-confidence predictions trigger a **rule-based fallback** for safe handling.
 
-   MEDTRIAGE_PRELOAD_ML=0 uvicorn main:app --reload
+---
 
-To run with the ML model preloaded (may download model at first run):
+## 🧠 Machine Learning Model
 
-   MEDTRIAGE_PRELOAD_ML=1 uvicorn main:app
+**Dataset:** [UCI Cleveland Heart Disease Dataset](https://archive.ics.uci.edu/ml/datasets/Heart+Disease) (303 samples, 14 features)  
+**Goal:** Predict likelihood of heart disease using 9 key clinical parameters.
 
-4. Open the interactive docs:
+### 🧩 Model Architecture
+- **Pipeline:** `ColumnTransformer` → `StandardScaler` → `RandomForestClassifier`
+- **Tuning:** `RandomizedSearchCV` (20 iterations, 5-fold CV, ROC-AUC optimized)
+- **Calibration:** Post-hoc Platt-scaling using Logistic Regression on a held-out fold
+- **Explainability:** Feature importance extraction (`feature_importances_`) served through the API
+- **Persistence:** Serialized with `joblib` → `heart_attack_model.pkl`
 
-   http://127.0.0.1:8000/docs
+### ⚙️ Preprocessing Steps
+| Feature Type | Transformation |
+|---------------|----------------|
+| Numeric | Median imputation → StandardScaler |
+| Categorical | Mode imputation → OneHotEncoder |
 
-## API Endpoints
+---
 
-POST /triage
+## 📊 Model Results
 
-Request JSON example:
+| Metric | Value |
+|---------|-------|
+| **ROC-AUC** | **0.85** |
+| **Brier Score** | **0.1625** |
 
-    {"symptom": "Severe chest pain, shortness of breath"}
+The model achieves a good tradeoff between discrimination (AUC = 0.85) and calibration (Brier = 0.1625), ensuring confidence scores align well with actual outcomes.
 
-Example rule-based response:
+---
 
-    {
-      "risk": "High",
-      "suggestion": "Visit ER immediately",
-      "conditions": ["Heart attack"]
-    }
+### 🔍 Evaluation Visuals
 
-Optional ML endpoint: POST /triage_ml
+**Confusion Matrix**
+> Shows classification accuracy across both risk classes.  
+> ✅ Correct predictions on the diagonal indicate balanced model performance.
+<img width="600" height="500" alt="confusion_matrix" src="https://github.com/user-attachments/assets/de70be11-461d-44a1-856a-a6cfd86fe592" />
 
-This endpoint attempts to use a transformers zero-shot-classification model to classify symptom urgency. If the ML model cannot be loaded the endpoint will gracefully fall back to the rule-based behavior.
 
-## Docker
 
-Build runtime image (small):
+**Calibration Curve**
+> Demonstrates how well predicted probabilities match observed outcomes.  
+> A nearly diagonal curve indicates proper probability calibration.
+<img width="600" height="600" alt="calibration" src="https://github.com/user-attachments/assets/9ff381d6-04ae-4be8-98a2-b948a3ce5b6d" />
 
-   docker build -t medtriage:latest .
 
-Run:
+**ROC Curve**
+> Illustrates tradeoff between sensitivity (TPR) and false positive rate (FPR).  
+> AUC = 0.85 indicates strong discriminative capability.
 
-   docker run -p 8000:8000 medtriage:latest
 
-Development image (includes test deps):
+<img width="640" height="480" alt="roc_curve" src="https://github.com/user-attachments/assets/b59a22ad-4314-4a4b-82dd-3d1986664501" />
 
-   docker build -f Dockerfile.dev -t medtriage:dev .
+---
 
-## CI
+## 🧩 Tech Stack
 
-A simple GitHub Actions workflow is included at `.github/workflows/ci.yml`. It installs a slim set of test dependencies from `requirements-ci.txt` (no heavy ML libs) and runs `pytest`.
+**Backend:** Python, FastAPI, Uvicorn, SQLAlchemy  
+**Frontend:** React (Vite), Tailwind CSS, Framer Motion  
+**ML:** scikit-learn, joblib, RandomForestClassifier, LogisticRegression calibrator  
+**Database:** SQLite / MySQL (via environment variable)  
+**Security:** JWT authentication (users + admin), input validation, rate limiting  
+**Ops:** Audit logging, PID/log files, environment-driven configuration
 
-## Notes
+---
 
-- `transformers` and `torch` are included as placeholders for future ML integration; current behavior is rule-based.
-- `venv/` and runtime artifacts are ignored via `.gitignore`.
+## 💡 Key Features
 
-## Project
+- 🩺 **Smart triage:** Combines rule-based logic + ML predictions  
+- 🔍 **Explainable:** Displays top contributing features  
+- ⚖️ **Calibrated confidence:** Avoids overconfident outputs  
+- 🧾 **Auditable:** Logs all sessions for transparency and QA  
+- 🔒 **Secure:** JWT-protected endpoints for users and admins  
 
-MedTriage - AI-powered healthcare symptom checker (MVP)
+---
+
+## 🧠 My ML Work (Core Contributions)
+
+- Implemented full preprocessing pipeline (imputation, scaling, encoding)  
+- Trained and tuned RandomForestClassifier (ROC-AUC optimized)  
+- Applied post-hoc Platt-scaling with LogisticRegression for calibration  
+- Extracted and served explainable top-k features via FastAPI  
+- Added rule-based fallback + confidence thresholding for safety  
+- Integrated model serialization and lazy loading in production  
+- Logged predictions, confidence, and latency for monitoring  
+- Produced JSON model report with key metrics and importances  
+
+---
+
+## 🧾 Example Architecture
+
+│
+├── /triage → Rule-based engine
+├── /triage_ml → DistilBERT zero-shot symptom classifier
+└── /triage_heart → RandomForest heart-risk model
+├── Preprocessing + Calibration
+├── Prediction + Feature Importance
+└── Audit Logging (SQLAlchemy)
+
+
+---
+
+## 💬 Elevator Pitch
+
+> “I built **MedTriage**, an interpretable triage platform that combines a rule-based engine with a calibrated RandomForest heart-risk model.  
+> I designed the full ML pipeline — preprocessing, tuning, calibration, and explainability — and integrated it into a secure FastAPI backend with JWT-based auth and audit logging.  
+> The system delivers calibrated probabilities, top contributing features, and rule-based fallback to ensure safe and interpretable predictions.”
+
+---
+
+## 🧭 Project Impact
+
+- Early heart-risk detection through evidence-based predictions  
+- Transparent and auditable model for clinical trust  
+- Safety-first design with abstain thresholds and fallback logic  
+- Scalable for integration into hospital or telehealth systems  
+
+---
+
+## 🧑‍💻 Run Locally
+
+```bash
+# Clone repo
+git clone https://github.com/<your-username>/MedTriage.git
+cd MedTriage
+
+# Backend setup
+cd backend
+pip install -r requirements.txt
+uvicorn main:app --reload
+
+# Frontend setup
+cd ../frontend
+npm install
+npm run dev
+
+```
+
+📜 License
+
+MIT License © 2025 Shakin Shahria
+
+🙏 Acknowledgments
+
+Dataset: UCI Heart Disease Dataset
+
+Libraries: scikit-learn • FastAPI • React • Tailwind CSS • Framer Motion
+
+
+
+---
+
+✅ **Next Step:**  
+Add your generated plots:
+- `confusion_matrix.png` → already included  
+- `roc_curve.png` and `calibration_curve.png` → place them in the root folder and replace the placeholders above.  
+- Keep your demo video file (`recording (2).webm`) or link in the section marked **Demo Video**.
+
+
+
+
+
+
+
 
