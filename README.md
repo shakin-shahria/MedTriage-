@@ -7,7 +7,9 @@ It provides interpretable, auditable, and calibrated triage guidance for early h
 
 ## 🎥 Demo Video
 
->[Uploading recording (2).webm…]()
+[recording (2).webm](https://github.com/user-attachments/assets/9a587988-442b-4350-bb67-92aee40ef957)
+
+
 
 
 
