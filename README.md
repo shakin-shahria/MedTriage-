@@ -178,13 +178,7 @@ Libraries: scikit-learn • FastAPI • React • Tailwind CSS • Framer Motion
 
 
 
----
 
-✅ **Next Step:**  
-Add your generated plots:
-- `confusion_matrix.png` → already included  
-- `roc_curve.png` and `calibration_curve.png` → place them in the root folder and replace the placeholders above.  
-- Keep your demo video file (`recording (2).webm`) or link in the section marked **Demo Video**.
 
 
 
